@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { AirportIndex, Route } from "@/lib/types";
 import { useRouteData } from "@/hooks/useRouteData";
 import FlightMap from "@/components/FlightMap";
@@ -12,7 +12,7 @@ import Footer from "@/components/Footer";
 export default function Home() {
   const [selectedAirport, setSelectedAirport] = useState<AirportIndex | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [selectedAirline, setSelectedAirline] = useState<string | null>(null);
 
   const { data: routeData, loading } = useRouteData(selectedAirport?.iata ?? null);
 
@@ -39,30 +39,15 @@ export default function Home() {
     return Array.from(airlineMap.values()).sort((a, b) => b.count - a.count);
   }, [routeData]);
 
-  // When route data loads, activate all airline filters
   const handleAirportSelect = useCallback((airport: AirportIndex) => {
     setSelectedAirport(airport);
     setSelectedRoute(null);
-    setActiveFilters(new Set()); // Will be populated when routeData loads
+    setSelectedAirline(null);
   }, []);
 
-  // Set all filters active when airlines data first loads
-  useEffect(() => {
-    if (airlines.length > 0) {
-      setActiveFilters(new Set(airlines.map((a) => a.code)));
-    }
-  }, [airlines]);
-
-  const handleFilterToggle = useCallback((code: string) => {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) {
-        next.delete(code);
-      } else {
-        next.add(code);
-      }
-      return next;
-    });
+  const handleAirlineToggle = useCallback((code: string) => {
+    setSelectedAirline((prev) => (prev === code ? null : code));
+    setSelectedRoute(null);
   }, []);
 
   return (
@@ -70,7 +55,7 @@ export default function Home() {
       {/* Map */}
       <FlightMap
         routeData={routeData}
-        activeFilters={activeFilters}
+        selectedAirline={selectedAirline}
         selectedRoute={selectedRoute}
         onSelectRoute={setSelectedRoute}
       />
@@ -81,8 +66,8 @@ export default function Home() {
         {routeData && (
           <AirlineFilters
             airlines={airlines}
-            activeFilters={activeFilters}
-            onToggle={handleFilterToggle}
+            selectedAirline={selectedAirline}
+            onToggle={handleAirlineToggle}
           />
         )}
       </div>

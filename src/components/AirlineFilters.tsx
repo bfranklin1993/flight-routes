@@ -5,7 +5,7 @@ import { getAirlineColor, needsDarkText } from "@/lib/airlines";
 
 interface AirlineFiltersProps {
   airlines: { code: string; name: string }[];
-  activeFilters: Set<string>;
+  selectedAirline: string | null;
   onToggle: (code: string) => void;
 }
 
@@ -13,7 +13,7 @@ const VISIBLE_COUNT = 8;
 
 export default function AirlineFilters({
   airlines,
-  activeFilters,
+  selectedAirline,
   onToggle,
 }: AirlineFiltersProps) {
   const [expanded, setExpanded] = useState(false);
@@ -26,7 +26,7 @@ export default function AirlineFilters({
   return (
     <div className="flex flex-wrap gap-2 justify-center mt-2 max-w-2xl">
       {visible.map((airline) => {
-        const isActive = activeFilters.has(airline.code);
+        const isSelected = selectedAirline === airline.code;
         const color = getAirlineColor(airline.code);
         const darkText = needsDarkText(airline.code);
 
@@ -36,9 +36,11 @@ export default function AirlineFilters({
             onClick={() => onToggle(airline.code)}
             className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
             style={{
-              backgroundColor: isActive ? color : "#e5e7eb",
-              color: isActive ? (darkText ? "#1f2937" : "#ffffff") : "#6b7280",
-              opacity: isActive ? 1 : 0.6,
+              backgroundColor: isSelected ? color : "rgba(255,255,255,0.85)",
+              color: isSelected ? (darkText ? "#1f2937" : "#ffffff") : "#4b5563",
+              boxShadow: isSelected
+                ? `0 0 0 2px ${color}`
+                : "0 1px 2px rgba(0,0,0,0.08)",
             }}
           >
             {airline.name}
@@ -48,8 +50,9 @@ export default function AirlineFilters({
       {hiddenCount > 0 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-600
-                     hover:bg-gray-300 transition-colors"
+          className="px-3 py-1 rounded-full text-xs font-semibold bg-white/85 text-gray-500
+                     hover:bg-white transition-colors"
+          style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.08)" }}
         >
           {expanded ? "Show less" : `+${hiddenCount} more`}
         </button>

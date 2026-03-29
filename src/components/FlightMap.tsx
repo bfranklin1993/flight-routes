@@ -9,7 +9,7 @@ import { getAirlineColor } from "@/lib/airlines";
 
 interface FlightMapProps {
   routeData: AirportRoutes | null;
-  activeFilters: Set<string>;
+  selectedAirline: string | null;
   selectedRoute: Route | null;
   onSelectRoute: (route: Route | null) => void;
 }
@@ -21,13 +21,18 @@ const LAYER_ARCS_HIGHLIGHT = "route-arc-highlight";
 const LAYER_DOTS = "route-dot-circles";
 const LAYER_DOTS_HIGHLIGHT = "route-dot-highlight";
 
-function buildArcFeatures(routeData: AirportRoutes, activeFilters: Set<string>) {
+function buildArcFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
   const origin = routeData.airport;
 
   return routeData.routes
-    .filter((route) => route.airlines.some((a) => activeFilters.has(a.code)))
+    .filter((route) =>
+      !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
+    )
     .map((route) => {
-      const primaryAirline = route.airlines.find((a) => activeFilters.has(a.code))!;
+      // Use selected airline's color, or the top airline's color
+      const airline = selectedAirline
+        ? route.airlines.find((a) => a.code === selectedAirline)!
+        : route.airlines[0];
       const coords = greatCircleArc(
         [origin.lon, origin.lat],
         [route.destination.lon, route.destination.lat]
@@ -37,7 +42,7 @@ function buildArcFeatures(routeData: AirportRoutes, activeFilters: Set<string>) 
         type: "Feature" as const,
         properties: {
           destIata: route.destination.iata,
-          color: getAirlineColor(primaryAirline.code),
+          color: getAirlineColor(airline.code),
         },
         geometry: {
           type: "LineString" as const,
@@ -47,16 +52,20 @@ function buildArcFeatures(routeData: AirportRoutes, activeFilters: Set<string>) 
     });
 }
 
-function buildDotFeatures(routeData: AirportRoutes, activeFilters: Set<string>) {
+function buildDotFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
   return routeData.routes
-    .filter((route) => route.airlines.some((a) => activeFilters.has(a.code)))
+    .filter((route) =>
+      !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
+    )
     .map((route) => {
-      const primaryAirline = route.airlines.find((a) => activeFilters.has(a.code))!;
+      const airline = selectedAirline
+        ? route.airlines.find((a) => a.code === selectedAirline)!
+        : route.airlines[0];
       return {
         type: "Feature" as const,
         properties: {
           destIata: route.destination.iata,
-          color: getAirlineColor(primaryAirline.code),
+          color: getAirlineColor(airline.code),
           name: route.destination.city,
         },
         geometry: {
@@ -69,17 +78,15 @@ function buildDotFeatures(routeData: AirportRoutes, activeFilters: Set<string>) 
 
 export default function FlightMap({
   routeData,
-  activeFilters,
+  selectedAirline,
   selectedRoute,
   onSelectRoute,
 }: FlightMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
-  // Keep a ref to routeData so click handlers always see the latest value
   const routeDataRef = useRef<AirportRoutes | null>(routeData);
 
-  // Keep routeDataRef in sync with routeData prop
   useEffect(() => {
     routeDataRef.current = routeData;
   }, [routeData]);
@@ -91,14 +98,13 @@ export default function FlightMap({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [-98.5, 39.8], // Center of US
+      center: [-98.5, 39.8],
       zoom: 3.5,
     });
 
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
 
     map.on("load", () => {
-      // Add empty sources
       map.addSource(SOURCE_ARCS, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -108,7 +114,6 @@ export default function FlightMap({
         data: { type: "FeatureCollection", features: [] },
       });
 
-      // Arc lines (dimmed when route selected)
       map.addLayer({
         id: LAYER_ARCS,
         type: "line",
@@ -120,7 +125,6 @@ export default function FlightMap({
         },
       });
 
-      // Highlighted arc
       map.addLayer({
         id: LAYER_ARCS_HIGHLIGHT,
         type: "line",
@@ -133,7 +137,6 @@ export default function FlightMap({
         filter: ["==", ["get", "destIata"], ""],
       });
 
-      // Destination dots
       map.addLayer({
         id: LAYER_DOTS,
         type: "circle",
@@ -152,7 +155,6 @@ export default function FlightMap({
         },
       });
 
-      // Highlighted dot
       map.addLayer({
         id: LAYER_DOTS_HIGHLIGHT,
         type: "circle",
@@ -175,7 +177,6 @@ export default function FlightMap({
       readyRef.current = true;
     });
 
-    // Click on destination dot — use routeDataRef to always get latest data
     map.on("click", LAYER_DOTS, (e) => {
       if (!e.features?.length || !routeDataRef.current) return;
       const destIata = e.features[0].properties?.destIata;
@@ -185,7 +186,6 @@ export default function FlightMap({
       if (route) onSelectRoute(route);
     });
 
-    // Click on map (not on a dot) — deselect
     map.on("click", (e) => {
       const features = map.queryRenderedFeatures(e.point, {
         layers: [LAYER_DOTS],
@@ -193,7 +193,6 @@ export default function FlightMap({
       if (!features.length) onSelectRoute(null);
     });
 
-    // Cursor change on hover
     map.on("mouseenter", LAYER_DOTS, () => {
       map.getCanvas().style.cursor = "pointer";
     });
@@ -227,8 +226,8 @@ export default function FlightMap({
       return;
     }
 
-    const arcFeatures = buildArcFeatures(routeData, activeFilters);
-    const dotFeatures = buildDotFeatures(routeData, activeFilters);
+    const arcFeatures = buildArcFeatures(routeData, selectedAirline);
+    const dotFeatures = buildDotFeatures(routeData, selectedAirline);
 
     (map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
@@ -245,7 +244,7 @@ export default function FlightMap({
       zoom: 4.5,
       duration: 1000,
     });
-  }, [routeData, activeFilters]);
+  }, [routeData, selectedAirline]);
 
   // Handle route selection highlighting
   useEffect(() => {
@@ -254,14 +253,11 @@ export default function FlightMap({
 
     if (selectedRoute) {
       const destIata = selectedRoute.destination.iata;
-
-      // Dim all arcs/dots, highlight selected
       map.setPaintProperty(LAYER_ARCS, "line-opacity", 0.15);
       map.setPaintProperty(LAYER_DOTS, "circle-opacity", 0.15);
       map.setFilter(LAYER_ARCS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
       map.setFilter(LAYER_DOTS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
     } else {
-      // Restore all
       map.setPaintProperty(LAYER_ARCS, "line-opacity", 0.6);
       map.setPaintProperty(LAYER_DOTS, "circle-opacity", 0.7);
       map.setFilter(LAYER_ARCS_HIGHLIGHT, ["==", ["get", "destIata"], ""]);
