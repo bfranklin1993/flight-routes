@@ -85,6 +85,10 @@ export default function Home() {
         <RouteDetailPanel
           route={selectedRoute}
           origin={routeData.airport}
+          rank={routeData.routes.findIndex(
+            (r) => r.destination.iata === selectedRoute.destination.iata
+          ) + 1}
+          totalRoutes={routeData.routes.length}
           onClose={() => setSelectedRoute(null)}
         />
       )}
