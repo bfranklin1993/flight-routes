@@ -24,26 +24,27 @@ ROUTES_DIR = OUTPUT_DIR / "routes"
 # OurAirports data
 OURAIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv"
 
-# Regional carriers to exclude — their flights are codeshares booked
-# under mainline carriers (United, Delta, American, Alaska) but BTS
-# reports operating carrier. Since we can't reliably map which mainline
-# carrier they're operating for on each route, we drop them to avoid
-# inflating mainline numbers or showing meaningless carrier names.
-REGIONAL_CARRIERS = {
-    "OO",  # SkyWest (operates for United, Delta, American, Alaska)
-    "YX",  # Republic (operates for United, American, Delta)
-    "MQ",  # Envoy Air (American Eagle)
-    "OH",  # PSA Airlines (American Eagle)
-    "PT",  # Piedmont (American Eagle)
-    "9E",  # Endeavor Air (Delta Connection)
-    "G7",  # GoJet (United Express)
-    "ZW",  # Air Wisconsin (American Eagle)
-    "C5",  # CommuteAir (United Express)
-    "QX",  # Horizon Air (Alaska)
+# Regional carriers with a single parent — safe to merge
+REGIONAL_TO_PARENT = {
+    "MQ": ("AA", "American"),   # Envoy Air → always American Eagle
+    "OH": ("AA", "American"),   # PSA Airlines → always American Eagle
+    "PT": ("AA", "American"),   # Piedmont → always American Eagle
+    "ZW": ("AA", "American"),   # Air Wisconsin → always American Eagle
+    "9E": ("DL", "Delta"),      # Endeavor Air → always Delta Connection
+    "G7": ("UA", "United"),     # GoJet → always United Express
+    "C5": ("UA", "United"),     # CommuteAir → always United Express
+    "QX": ("AS", "Alaska"),     # Horizon Air → always Alaska
+}
+
+# Regional carriers that fly for MULTIPLE mainline airlines —
+# can't reliably attribute, so drop them
+AMBIGUOUS_REGIONALS = {
+    "OO",  # SkyWest (United, Delta, American, Alaska)
+    "YX",  # Republic (United, American, Delta)
+    "YV",  # Mesa (United, American)
+    "AX",  # Trans States (multiple)
+    "CP",  # Compass (multiple)
     "K5",  # Jazz Aviation
-    "YV",  # Mesa Airlines
-    "AX",  # Trans States
-    "CP",  # Compass Airlines
 }
 
 # Clean up verbose BTS carrier names to human-friendly names
@@ -222,9 +223,14 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
     # Filter to routes that actually operated AND carried passengers (exclude cargo-only)
     t100 = t100[(t100["DEPARTURES_PERFORMED"] > 0) & (t100["PASSENGERS"] > 0)].copy()
 
-    # Drop regional carriers — their flights are codeshares booked under
-    # mainline carriers, and we can't reliably attribute them
-    t100 = t100[~t100["UNIQUE_CARRIER"].isin(REGIONAL_CARRIERS)]
+    # Merge single-parent regionals into their mainline carrier
+    for regional_code, (parent_code, parent_name) in REGIONAL_TO_PARENT.items():
+        mask = t100["UNIQUE_CARRIER"] == regional_code
+        t100.loc[mask, "UNIQUE_CARRIER"] = parent_code
+        t100.loc[mask, "CARRIER_NAME"] = parent_name
+
+    # Drop ambiguous regionals that fly for multiple airlines
+    t100 = t100[~t100["UNIQUE_CARRIER"].isin(AMBIGUOUS_REGIONALS)]
 
     # Clean up verbose BTS carrier names
     t100["CARRIER_NAME"] = t100["CARRIER_NAME"].map(
