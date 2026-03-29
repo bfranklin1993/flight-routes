@@ -1,13 +1,11 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { AirportRoutes, Route } from "@/lib/types";
 import { greatCircleArc } from "@/lib/geo";
 import { getAirlineColor } from "@/lib/airlines";
-
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 interface FlightMapProps {
   routeData: AirportRoutes | null;
@@ -76,7 +74,7 @@ export default function FlightMap({
   onSelectRoute,
 }: FlightMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   // Keep a ref to routeData so click handlers always see the latest value
   const routeDataRef = useRef<AirportRoutes | null>(routeData);
@@ -90,14 +88,14 @@ export default function FlightMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/light-v11",
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: [-98.5, 39.8], // Center of US
       zoom: 3.5,
     });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+    map.addControl(new maplibregl.NavigationControl(), "bottom-right");
 
     map.on("load", () => {
       // Add empty sources
@@ -218,11 +216,11 @@ export default function FlightMap({
     if (!map || !readyRef.current) return;
 
     if (!routeData) {
-      (map.getSource(SOURCE_ARCS) as mapboxgl.GeoJSONSource)?.setData({
+      (map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource)?.setData({
         type: "FeatureCollection",
         features: [],
       });
-      (map.getSource(SOURCE_DOTS) as mapboxgl.GeoJSONSource)?.setData({
+      (map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource)?.setData({
         type: "FeatureCollection",
         features: [],
       });
@@ -232,11 +230,11 @@ export default function FlightMap({
     const arcFeatures = buildArcFeatures(routeData, activeFilters);
     const dotFeatures = buildDotFeatures(routeData, activeFilters);
 
-    (map.getSource(SOURCE_ARCS) as mapboxgl.GeoJSONSource)?.setData({
+    (map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features: arcFeatures,
     });
-    (map.getSource(SOURCE_DOTS) as mapboxgl.GeoJSONSource)?.setData({
+    (map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features: dotFeatures,
     });
