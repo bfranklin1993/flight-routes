@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { getAirlineColor, needsDarkText } from "@/lib/airlines";
 
 interface AirlineFiltersProps {
@@ -8,16 +9,23 @@ interface AirlineFiltersProps {
   onToggle: (code: string) => void;
 }
 
+const VISIBLE_COUNT = 8;
+
 export default function AirlineFilters({
   airlines,
   activeFilters,
   onToggle,
 }: AirlineFiltersProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (airlines.length === 0) return null;
 
+  const visible = expanded ? airlines : airlines.slice(0, VISIBLE_COUNT);
+  const hiddenCount = airlines.length - VISIBLE_COUNT;
+
   return (
-    <div className="flex flex-wrap gap-2 justify-center mt-2">
-      {airlines.map((airline) => {
+    <div className="flex flex-wrap gap-2 justify-center mt-2 max-w-2xl">
+      {visible.map((airline) => {
         const isActive = activeFilters.has(airline.code);
         const color = getAirlineColor(airline.code);
         const darkText = needsDarkText(airline.code);
@@ -37,6 +45,15 @@ export default function AirlineFilters({
           </button>
         );
       })}
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-600
+                     hover:bg-gray-300 transition-colors"
+        >
+          {expanded ? "Show less" : `+${hiddenCount} more`}
+        </button>
+      )}
     </div>
   );
 }
