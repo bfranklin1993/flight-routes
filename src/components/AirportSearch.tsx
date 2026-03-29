@@ -33,16 +33,26 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
     }
 
     const q = query.toLowerCase();
-    const filtered = airports
-      .filter(
-        (a) =>
-          a.iata.toLowerCase().includes(q) ||
-          a.name.toLowerCase().includes(q) ||
-          a.city.toLowerCase().includes(q)
-      )
-      .slice(0, 8);
+    const filtered = airports.filter(
+      (a) =>
+        a.iata.toLowerCase().includes(q) ||
+        a.name.toLowerCase().includes(q) ||
+        a.city.toLowerCase().includes(q)
+    );
 
-    setResults(filtered);
+    // Sort: exact IATA match first, then IATA prefix, then city prefix, then rest
+    filtered.sort((a, b) => {
+      const aIata = a.iata.toLowerCase();
+      const bIata = b.iata.toLowerCase();
+      const aCity = a.city.toLowerCase();
+      const bCity = b.city.toLowerCase();
+
+      const aExact = aIata === q ? 0 : aIata.startsWith(q) ? 1 : aCity.startsWith(q) ? 2 : 3;
+      const bExact = bIata === q ? 0 : bIata.startsWith(q) ? 1 : bCity.startsWith(q) ? 2 : 3;
+      return aExact - bExact;
+    });
+
+    setResults(filtered.slice(0, 8));
     setHighlightIndex(-1);
   }, [query, airports]);
 

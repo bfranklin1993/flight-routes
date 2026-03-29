@@ -24,6 +24,82 @@ ROUTES_DIR = OUTPUT_DIR / "routes"
 # OurAirports data
 OURAIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv"
 
+# Regional carriers → parent airline mapping
+# BTS reports operating carrier, but travelers book the marketing carrier
+REGIONAL_TO_PARENT = {
+    "OO": "UA",  # SkyWest → United (also operates for Delta/American, but primarily United)
+    "YX": "AA",  # Republic → American
+    "MQ": "AA",  # Envoy Air → American
+    "OH": "AA",  # PSA Airlines → American
+    "PT": "AA",  # Piedmont → American
+    "9E": "DL",  # Endeavor Air → Delta
+    "G7": "UA",  # GoJet → United Express
+    "ZW": "AA",  # Air Wisconsin → American
+    "C5": "UA",  # CommuteAir → United Express
+    "QX": "AS",  # Horizon Air → Alaska
+    "K5": "DL",  # Jazz Aviation → Delta (in US context)
+    "YV": "AA",  # Mesa Airlines → American
+    "AX": "AA",  # Trans States → American
+    "CP": "UA",  # Compass Airlines → United
+}
+
+PARENT_NAMES = {
+    "UA": "United",
+    "AA": "American",
+    "DL": "Delta",
+    "AS": "Alaska",
+}
+
+# Clean up verbose BTS carrier names to human-friendly names
+CARRIER_NAME_CLEANUP = {
+    "United Air Lines Inc.": "United",
+    "American Airlines Inc.": "American",
+    "Delta Air Lines Inc.": "Delta",
+    "Southwest Airlines Co.": "Southwest",
+    "Alaska Airlines Inc.": "Alaska",
+    "JetBlue Airways": "JetBlue",
+    "Spirit Air Lines": "Spirit",
+    "Frontier Airlines Inc.": "Frontier",
+    "Sun Country Airlines d/b/a MN Airlines": "Sun Country",
+    "TEM Enterprises dba  Avelo Airlines": "Avelo",
+    "Compagnie Natl Air France": "Air France",
+    "Klm Royal Dutch Airlines": "KLM",
+    "Lufthansa German Airlines": "Lufthansa",
+    "British Airways Plc": "British Airways",
+    "Scandinavian Airlines Sys.": "SAS",
+    "Korean Air Lines Co. Ltd.": "Korean Air",
+    "Japan Air Lines Co. Ltd.": "Japan Airlines",
+    "All Nippon Airways Co.": "ANA",
+    "Cathay Pacific Airways Ltd.": "Cathay Pacific",
+    "Eva Airways Corporation": "EVA Air",
+    "Turk Hava Yollari A.O.": "Turkish Airlines",
+    "Qatar Airways (Q.C.S.C)": "Qatar Airways",
+    "Compania Panamena (Copa)": "Copa Airlines",
+    "Alia-(The) Royal Jordanian": "Royal Jordanian",
+    "Swiss International Airlines": "Swiss",
+    "Aer Lingus Plc": "Aer Lingus",
+    "Italia Transporto Aereo S.P.A DBA ITA S.P.A": "ITA Airways",
+    "Polskie Linie Lotnicze": "LOT Polish",
+    "Concesionaria Vuela Compania De Aviacion SA de CV (Volaris)": "Volaris",
+    "Aeroenlaces Nacionales, S.A. de C.V. d/b/a VivaAerobus": "VivaAerobus",
+    "Aerovias Nacl De Colombia": "Avianca",
+    "Taca International Airlines": "TACA",
+    "National Aviation Company of India Limited d/b/a Air India": "Air India",
+    "Finnair Oy": "Finnair",
+    "TAP-TAP Air Portugal": "TAP Air Portugal",
+    "CFM Inc d/b/a Contour Airlines d/b/a One Jet Shuttle": "Contour Airlines",
+    "Southern Airways Express, dba Mokulele Airlines": "Southern Airways",
+    "Key Lime Air Corp dba Denver Air Connection": "Denver Air",
+    "Air Canada rouge LP": "Air Canada Rouge",
+    "Jazz Aviation LP": "Jazz Aviation",
+    "Ethiopian Airlines": "Ethiopian",
+    "Etihad Airways": "Etihad",
+    "Iberia Air Lines Of Spain": "Iberia",
+    "Icelandair": "Icelandair",
+    "Arajet S.A.": "Arajet",
+    "Lacsa": "LACSA",
+}
+
 # Columns we need from T-100
 T100_COLS = [
     "ORIGIN", "DEST", "UNIQUE_CARRIER", "CARRIER_NAME",
@@ -103,8 +179,18 @@ def haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
 
 def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
     """Aggregate T-100 data and output per-airport JSON files."""
-    # Filter to routes that actually operated
-    t100 = t100[t100["DEPARTURES_PERFORMED"] > 0].copy()
+    # Filter to routes that actually operated AND carried passengers (exclude cargo-only)
+    t100 = t100[(t100["DEPARTURES_PERFORMED"] > 0) & (t100["PASSENGERS"] > 0)].copy()
+
+    # Merge regional carriers into their parent airlines
+    mask = t100["UNIQUE_CARRIER"].isin(REGIONAL_TO_PARENT)
+    t100.loc[mask, "UNIQUE_CARRIER"] = t100.loc[mask, "UNIQUE_CARRIER"].map(REGIONAL_TO_PARENT)
+    t100.loc[mask, "CARRIER_NAME"] = t100.loc[mask, "UNIQUE_CARRIER"].map(PARENT_NAMES)
+
+    # Clean up verbose BTS carrier names
+    t100["CARRIER_NAME"] = t100["CARRIER_NAME"].map(
+        lambda x: CARRIER_NAME_CLEANUP.get(x, x)
+    )
 
     # Aggregate by origin-dest-carrier across all months
     agg = (
@@ -118,6 +204,10 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
 
     # Calculate weekly flights (total departures / 52 weeks, rounded)
     agg["weekly_flights"] = (agg["total_departures"] / 52).round().astype(int)
+
+    # Filter out charter/private operators: require at least 1,000 passengers
+    # on a route over the year (roughly 20/week = real scheduled service)
+    agg = agg[agg["total_passengers"] >= 1000]
 
     # Build airport lookup
     airport_lookup = airports.set_index("iata").to_dict("index")
