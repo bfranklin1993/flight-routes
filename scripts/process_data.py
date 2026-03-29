@@ -24,30 +24,26 @@ ROUTES_DIR = OUTPUT_DIR / "routes"
 # OurAirports data
 OURAIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv"
 
-# Regional carriers → parent airline mapping
-# BTS reports operating carrier, but travelers book the marketing carrier
-REGIONAL_TO_PARENT = {
-    "OO": "UA",  # SkyWest → United (also operates for Delta/American, but primarily United)
-    "YX": "AA",  # Republic → American
-    "MQ": "AA",  # Envoy Air → American
-    "OH": "AA",  # PSA Airlines → American
-    "PT": "AA",  # Piedmont → American
-    "9E": "DL",  # Endeavor Air → Delta
-    "G7": "UA",  # GoJet → United Express
-    "ZW": "AA",  # Air Wisconsin → American
-    "C5": "UA",  # CommuteAir → United Express
-    "QX": "AS",  # Horizon Air → Alaska
-    "K5": "DL",  # Jazz Aviation → Delta (in US context)
-    "YV": "AA",  # Mesa Airlines → American
-    "AX": "AA",  # Trans States → American
-    "CP": "UA",  # Compass Airlines → United
-}
-
-PARENT_NAMES = {
-    "UA": "United",
-    "AA": "American",
-    "DL": "Delta",
-    "AS": "Alaska",
+# Regional carriers to exclude — their flights are codeshares booked
+# under mainline carriers (United, Delta, American, Alaska) but BTS
+# reports operating carrier. Since we can't reliably map which mainline
+# carrier they're operating for on each route, we drop them to avoid
+# inflating mainline numbers or showing meaningless carrier names.
+REGIONAL_CARRIERS = {
+    "OO",  # SkyWest (operates for United, Delta, American, Alaska)
+    "YX",  # Republic (operates for United, American, Delta)
+    "MQ",  # Envoy Air (American Eagle)
+    "OH",  # PSA Airlines (American Eagle)
+    "PT",  # Piedmont (American Eagle)
+    "9E",  # Endeavor Air (Delta Connection)
+    "G7",  # GoJet (United Express)
+    "ZW",  # Air Wisconsin (American Eagle)
+    "C5",  # CommuteAir (United Express)
+    "QX",  # Horizon Air (Alaska)
+    "K5",  # Jazz Aviation
+    "YV",  # Mesa Airlines
+    "AX",  # Trans States
+    "CP",  # Compass Airlines
 }
 
 # Clean up verbose BTS carrier names to human-friendly names
@@ -182,14 +178,21 @@ def load_t100_data() -> pd.DataFrame:
     if domestic_path.exists():
         print(f"Loading domestic T-100 data from {domestic_path}...")
         df = pd.read_csv(domestic_path, usecols=lambda c: c in T100_COLS)
+        domestic_pairs = set(zip(df["ORIGIN"], df["DEST"]))
         frames.append(df)
     else:
         print(f"WARNING: {domestic_path} not found. Download from transtats.bts.gov")
+        domestic_pairs = set()
 
     intl_path = RAW_DIR / "t100_international.csv"
     if intl_path.exists():
         print(f"Loading international T-100 data from {intl_path}...")
         df = pd.read_csv(intl_path, usecols=lambda c: c in T100_COLS)
+        if domestic_pairs:
+            # The international file duplicates all domestic routes — filter them out
+            before = len(df)
+            df = df[~df.apply(lambda r: (r["ORIGIN"], r["DEST"]) in domestic_pairs, axis=1)]
+            print(f"  Removed {before - len(df)} domestic duplicates from international file")
         frames.append(df)
     else:
         print(f"WARNING: {intl_path} not found. Download from transtats.bts.gov")
@@ -219,10 +222,9 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
     # Filter to routes that actually operated AND carried passengers (exclude cargo-only)
     t100 = t100[(t100["DEPARTURES_PERFORMED"] > 0) & (t100["PASSENGERS"] > 0)].copy()
 
-    # Merge regional carriers into their parent airlines
-    mask = t100["UNIQUE_CARRIER"].isin(REGIONAL_TO_PARENT)
-    t100.loc[mask, "UNIQUE_CARRIER"] = t100.loc[mask, "UNIQUE_CARRIER"].map(REGIONAL_TO_PARENT)
-    t100.loc[mask, "CARRIER_NAME"] = t100.loc[mask, "UNIQUE_CARRIER"].map(PARENT_NAMES)
+    # Drop regional carriers — their flights are codeshares booked under
+    # mainline carriers, and we can't reliably attribute them
+    t100 = t100[~t100["UNIQUE_CARRIER"].isin(REGIONAL_CARRIERS)]
 
     # Clean up verbose BTS carrier names
     t100["CARRIER_NAME"] = t100["CARRIER_NAME"].map(
