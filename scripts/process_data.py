@@ -34,17 +34,21 @@ REGIONAL_TO_PARENT = {
     "G7": ("UA", "United"),     # GoJet → always United Express
     "C5": ("UA", "United"),     # CommuteAir → always United Express
     "QX": ("AS", "Alaska"),     # Horizon Air → always Alaska
+    "TA": ("AV", "Avianca"),     # TACA → now Avianca
+    "LR": ("AV", "Avianca"),     # LACSA → now Avianca
+    "QK": ("AC", "Air Canada"),  # Jazz Aviation → always Air Canada
+    "5D": ("AM", "Aeromexico"),  # Aerolitoral → always Aeromexico Connect
 }
 
 # Regional carriers that fly for MULTIPLE mainline airlines —
-# can't reliably attribute, so drop them
+# can't attribute to a specific mainline, so relabel as "Regional"
+# to preserve the routes while being honest about carrier attribution
 AMBIGUOUS_REGIONALS = {
-    "OO",  # SkyWest (United, Delta, American, Alaska)
-    "YX",  # Republic (United, American, Delta)
-    "YV",  # Mesa (United, American)
-    "AX",  # Trans States (multiple)
-    "CP",  # Compass (multiple)
-    "K5",  # Jazz Aviation
+    "OO": "Regional (SkyWest)",
+    "YX": "Regional (Republic)",
+    "YV": "Regional (Mesa)",
+    "AX": "Regional",
+    "CP": "Regional",
 }
 
 # Clean up verbose BTS carrier names to human-friendly names
@@ -132,6 +136,13 @@ CARRIER_NAME_CLEANUP = {
     "Uzbekistan Airways": "Uzbekistan Airways",
     "Breeze Aviation Group DBA  Breeze": "Breeze",
     "Allegiant Air": "Allegiant",
+    "Air Pacific Ltd.": "Fiji Airways",
+    "Aerogal": "LATAM Ecuador",
+    "Aerovias de Mexico": "Aeromexico",
+    "Aerovias Nacl De Colombia": "Avianca",
+    "Air Canada": "Air Canada",
+    "Eastern Airlines f/k/a Dynamic Airways LLC": "Eastern",
+    "Global Crossing Airlines Inc.": "GlobalX",
 }
 
 # Columns we need from T-100
@@ -229,8 +240,10 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
         t100.loc[mask, "UNIQUE_CARRIER"] = parent_code
         t100.loc[mask, "CARRIER_NAME"] = parent_name
 
-    # Drop ambiguous regionals that fly for multiple airlines
-    t100 = t100[~t100["UNIQUE_CARRIER"].isin(AMBIGUOUS_REGIONALS)]
+    # Relabel ambiguous regionals — keep routes but use generic names
+    for code, label in AMBIGUOUS_REGIONALS.items():
+        mask = t100["UNIQUE_CARRIER"] == code
+        t100.loc[mask, "CARRIER_NAME"] = label
 
     # Clean up verbose BTS carrier names
     t100["CARRIER_NAME"] = t100["CARRIER_NAME"].map(
