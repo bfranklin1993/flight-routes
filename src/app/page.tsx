@@ -7,16 +7,17 @@ import FlightMap from "@/components/FlightMap";
 import AirportSearch from "@/components/AirportSearch";
 import AirlineFilters from "@/components/AirlineFilters";
 import RouteDetailPanel from "@/components/RouteDetailPanel";
+import DestinationList from "@/components/DestinationList";
 import Footer from "@/components/Footer";
 
 export default function Home() {
   const [selectedAirport, setSelectedAirport] = useState<AirportIndex | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [selectedAirline, setSelectedAirline] = useState<string | null>(null);
+  const [view, setView] = useState<"map" | "list">("map");
 
   const { data: routeData, loading } = useRouteData(selectedAirport?.iata ?? null);
 
-  // Extract unique airlines from route data, sorted by number of routes served
   const airlines = useMemo(() => {
     if (!routeData) return [];
 
@@ -50,9 +51,14 @@ export default function Home() {
     setSelectedRoute(null);
   }, []);
 
+  const handleListRouteSelect = useCallback((route: Route) => {
+    setSelectedRoute(route);
+    setView("map");
+  }, []);
+
   return (
     <main className="h-screen w-screen relative overflow-hidden">
-      {/* Map */}
+      {/* Map (always rendered for smooth transitions) */}
       <FlightMap
         routeData={routeData}
         selectedAirline={selectedAirline}
@@ -60,9 +66,46 @@ export default function Home() {
         onSelectRoute={setSelectedRoute}
       />
 
-      {/* Search + Filters overlay */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
-        <AirportSearch onSelect={handleAirportSelect} selected={selectedAirport} />
+      {/* List view overlay */}
+      {view === "list" && routeData && (
+        <DestinationList
+          routeData={routeData}
+          selectedAirline={selectedAirline}
+          onSelectRoute={handleListRouteSelect}
+        />
+      )}
+
+      {/* Search + Filters + View Toggle overlay */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
+        <div className="flex gap-2 items-center">
+          <AirportSearch onSelect={handleAirportSelect} selected={selectedAirport} />
+          {routeData && (
+            <div className="flex bg-white rounded-lg shadow-md overflow-hidden">
+              <button
+                onClick={() => setView("map")}
+                className={`px-3 py-3 text-sm transition-colors ${
+                  view === "map"
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+                title="Map view"
+              >
+                🗺
+              </button>
+              <button
+                onClick={() => setView("list")}
+                className={`px-3 py-3 text-sm transition-colors ${
+                  view === "list"
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+                title="List view"
+              >
+                ☰
+              </button>
+            </div>
+          )}
+        </div>
         {routeData && (
           <AirlineFilters
             airlines={airlines}

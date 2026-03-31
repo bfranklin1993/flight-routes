@@ -45,7 +45,6 @@ export default function RouteDetailPanel({
 
       {/* Boarding Pass Header */}
       <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>
-        {/* Top strip — rank only */}
         <div className="flex justify-end items-center px-4 py-2.5"
              style={{ background: "#16213e" }}>
           <span className="text-gray-500 text-xs">
@@ -53,7 +52,6 @@ export default function RouteDetailPanel({
           </span>
         </div>
 
-        {/* Route codes */}
         <div className="flex justify-between items-center px-5 py-5">
           <div className="text-center">
             <div className="text-white text-3xl font-bold tracking-[2px]">
@@ -76,10 +74,8 @@ export default function RouteDetailPanel({
           </div>
         </div>
 
-        {/* Perforated line */}
         <div className="mx-2" style={{ borderTop: "2px dashed #2a2a4a" }} />
 
-        {/* Stats strip */}
         <div className="flex justify-between px-5 py-3">
           <div>
             <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Distance</div>
@@ -102,43 +98,37 @@ export default function RouteDetailPanel({
         </div>
       </div>
 
-      {/* Airlines — Solari board style */}
-      <div style={{ background: "#0a0a0a", fontFamily: "'Courier New', monospace" }}
-           className="px-4 py-4">
-        <div className="text-[9px] uppercase tracking-[1px] text-gray-600 mb-2 px-1">
-          Airlines
+      {/* Airlines — Solari split-flap board */}
+      <div className="solari-board px-3 py-4">
+        {/* Column headers */}
+        <div className="flex items-center justify-between px-2 mb-2">
+          <span className="solari-header">Airline</span>
+          <span className="solari-header">Freq</span>
         </div>
-        <div className="space-y-1">
-          {route.airlines.map((airline) => {
-            const dailyFlights = Math.round(airline.weekly_flights / 7);
-            return (
-              <div
-                key={airline.code}
-                className="flex items-center justify-between px-2.5 py-2 rounded"
-                style={{ background: "#141414", border: "1px solid #222" }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: getAirlineColor(airline.code) }}
-                  />
-                  <span className="text-gray-200 text-sm font-semibold tracking-wide">
-                    {airline.name}
-                  </span>
-                </div>
-                <span className="text-amber-400 text-xs font-bold tracking-wider">
-                  {dailyFlights > 0
-                    ? `${dailyFlights}/DAY`
-                    : `${airline.weekly_flights}/WK`}
-                </span>
+
+        {route.airlines.map((airline, i) => {
+          const dailyFlights = Math.round(airline.weekly_flights / 7);
+          return (
+            <div key={airline.code} className="solari-row">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-1.5 h-4 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: getAirlineColor(airline.code) }}
+                />
+                <span className="solari-text truncate">{airline.name.toUpperCase()}</span>
               </div>
-            );
-          })}
-        </div>
+              <span className="solari-text-amber flex-shrink-0">
+                {dailyFlights > 0
+                  ? `${dailyFlights}/DAY`
+                  : `${airline.weekly_flights}/WK`}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Search Flights */}
-      <div className="p-5">
+      <div className="p-5 pt-2">
         <a
           href={googleFlightsUrl(origin.iata, dest.iata)}
           target="_blank"
