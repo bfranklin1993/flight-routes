@@ -56,6 +56,8 @@ export default function Home() {
     setView("map");
   }, []);
 
+  const isDark = view === "list" && !!routeData;
+
   return (
     <main className="h-screen w-screen relative overflow-hidden">
       {/* Map */}
@@ -78,13 +80,19 @@ export default function Home() {
       {/* Top bar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
         <div className="flex gap-2 items-center">
-          <AirportSearch onSelect={handleAirportSelect} selected={selectedAirport} />
+          <AirportSearch
+            onSelect={handleAirportSelect}
+            selected={selectedAirport}
+            dark={isDark}
+          />
           {routeData && (
             <button
               onClick={() => setView(view === "map" ? "list" : "map")}
-              className="bg-white rounded-lg shadow-md px-3.5 py-3 text-sm
-                         text-gray-600 hover:bg-gray-50 transition-colors font-medium"
-              title={view === "map" ? "Show list" : "Show map"}
+              className={`rounded-lg px-3.5 py-3 text-sm font-semibold transition-colors
+                ${isDark
+                  ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                  : "bg-white shadow-md text-gray-600 hover:bg-gray-50"
+                }`}
             >
               {view === "map" ? "List" : "Map"}
             </button>
@@ -95,6 +103,7 @@ export default function Home() {
             airlines={airlines}
             selectedAirline={selectedAirline}
             onToggle={handleAirlineToggle}
+            dark={isDark}
           />
         )}
       </div>

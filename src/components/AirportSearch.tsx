@@ -6,9 +6,10 @@ import type { AirportIndex } from "@/lib/types";
 interface AirportSearchProps {
   onSelect: (airport: AirportIndex) => void;
   selected: AirportIndex | null;
+  dark?: boolean;
 }
 
-export default function AirportSearch({ onSelect, selected }: AirportSearchProps) {
+export default function AirportSearch({ onSelect, selected, dark }: AirportSearchProps) {
   const [query, setQuery] = useState("");
   const [airports, setAirports] = useState<AirportIndex[]>([]);
   const [results, setResults] = useState<AirportIndex[]>([]);
@@ -17,7 +18,6 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Load airport index once
   useEffect(() => {
     fetch("/data/airports.json")
       .then((res) => res.json())
@@ -25,7 +25,6 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
       .catch(() => {});
   }, []);
 
-  // Filter results as user types
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -40,7 +39,6 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
         a.city.toLowerCase().includes(q)
     );
 
-    // Sort: exact IATA match first, then IATA prefix, then city prefix, then rest
     filtered.sort((a, b) => {
       const aIata = a.iata.toLowerCase();
       const bIata = b.iata.toLowerCase();
@@ -82,6 +80,11 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
     }
   };
 
+  const baseBg = dark ? "bg-gray-800 text-gray-100" : "bg-white text-gray-800";
+  const baseHover = dark ? "hover:bg-gray-700" : "hover:shadow-lg";
+  const subText = dark ? "text-gray-400" : "text-gray-500";
+  const placeholderColor = dark ? "placeholder-gray-500" : "placeholder-gray-400";
+
   return (
     <div className="relative w-full max-w-md">
       {selected && !isOpen ? (
@@ -90,12 +93,12 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
             setIsOpen(true);
             setTimeout(() => inputRef.current?.focus(), 0);
           }}
-          className="w-full bg-white rounded-lg px-5 py-3 shadow-md text-left
-                     text-gray-800 font-medium hover:shadow-lg transition-shadow"
+          className={`w-full rounded-lg px-5 py-3 shadow-md text-left font-medium
+                     transition-all ${baseBg} ${baseHover}`}
         >
-          <span className="text-gray-400 mr-1">✈</span>
+          <span className={`mr-1 ${subText}`}>✈</span>
           <span className="font-bold">{selected.iata}</span>
-          <span className="text-gray-500 ml-2">— {selected.name}</span>
+          <span className={`ml-2 ${subText}`}>— {selected.name}</span>
         </button>
       ) : (
         <div>
@@ -111,25 +114,29 @@ export default function AirportSearch({ onSelect, selected }: AirportSearchProps
             onBlur={() => setTimeout(() => setIsOpen(false), 200)}
             onKeyDown={handleKeyDown}
             placeholder="Search airports (e.g., ORD, Chicago, O'Hare)"
-            className="w-full bg-white rounded-lg px-5 py-3 shadow-md
-                       text-gray-800 placeholder-gray-400 outline-none
-                       focus:shadow-lg transition-shadow"
+            className={`w-full rounded-lg px-5 py-3 shadow-md outline-none
+                       transition-shadow focus:shadow-lg ${baseBg} ${placeholderColor}`}
           />
           {isOpen && results.length > 0 && (
             <ul
               ref={listRef}
-              className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg
-                         border border-gray-100 overflow-hidden z-50"
+              className={`absolute top-full mt-1 w-full rounded-lg shadow-lg
+                         overflow-hidden z-50 ${dark ? "bg-gray-800 border border-gray-700" : "bg-white border border-gray-100"}`}
             >
               {results.map((airport, i) => (
                 <li
                   key={airport.iata}
                   onMouseDown={() => handleSelect(airport)}
                   className={`px-5 py-3 cursor-pointer transition-colors
-                    ${i === highlightIndex ? "bg-gray-100" : "hover:bg-gray-50"}`}
+                    ${dark
+                      ? (i === highlightIndex ? "bg-gray-700" : "hover:bg-gray-700")
+                      : (i === highlightIndex ? "bg-gray-100" : "hover:bg-gray-50")
+                    }`}
                 >
-                  <span className="font-bold text-gray-800">{airport.iata}</span>
-                  <span className="text-gray-500 ml-2">
+                  <span className={`font-bold ${dark ? "text-gray-100" : "text-gray-800"}`}>
+                    {airport.iata}
+                  </span>
+                  <span className={`ml-2 ${subText}`}>
                     {airport.name} — {airport.city}
                   </span>
                 </li>
