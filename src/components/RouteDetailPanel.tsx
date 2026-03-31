@@ -31,7 +31,7 @@ export default function RouteDetailPanel({
       : `${(n / 1_000).toFixed(0)}K`;
 
   return (
-    <div className="absolute top-0 right-0 h-full w-72 bg-white shadow-xl border-l
+    <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl border-l
                     border-gray-100 z-40 overflow-y-auto animate-slide-in">
       {/* Close button */}
       <button
@@ -48,10 +48,10 @@ export default function RouteDetailPanel({
         {/* Top strip */}
         <div className="flex justify-between items-center px-4 py-2.5"
              style={{ background: "#16213e" }}>
-          <span className="text-gray-300 text-[10px] uppercase tracking-[2px]">
+          <span className="text-gray-300 text-xs uppercase tracking-[2px]">
             Boarding Pass
           </span>
-          <span className="text-gray-500 text-[10px]">
+          <span className="text-gray-500 text-xs">
             #{rank} of {totalRoutes}
           </span>
         </div>
@@ -59,10 +59,10 @@ export default function RouteDetailPanel({
         {/* Route codes */}
         <div className="flex justify-between items-center px-4 py-5">
           <div className="text-center">
-            <div className="text-white text-[28px] font-bold tracking-[2px]">
+            <div className="text-white text-3xl font-bold tracking-[2px]">
               {origin.iata}
             </div>
-            <div className="text-gray-400 text-[11px] mt-0.5">{origin.city}</div>
+            <div className="text-gray-400 text-xs mt-0.5">{origin.city}</div>
           </div>
           <div className="flex-1 px-3 relative">
             <div className="border-t border-dashed border-gray-600 w-full" />
@@ -72,10 +72,10 @@ export default function RouteDetailPanel({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-white text-[28px] font-bold tracking-[2px]">
+            <div className="text-white text-3xl font-bold tracking-[2px]">
               {dest.iata}
             </div>
-            <div className="text-gray-400 text-[11px] mt-0.5">{dest.city}</div>
+            <div className="text-gray-400 text-xs mt-0.5">{dest.city}</div>
           </div>
         </div>
 
@@ -85,20 +85,20 @@ export default function RouteDetailPanel({
         {/* Stats strip */}
         <div className="flex justify-between px-4 py-3">
           <div>
-            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Distance</div>
-            <div className="text-gray-200 text-[13px] font-semibold">
+            <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Distance</div>
+            <div className="text-gray-200 text-sm font-semibold">
               {route.distance_miles.toLocaleString()} mi
             </div>
           </div>
           <div className="text-center">
-            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Daily</div>
-            <div className="text-gray-200 text-[13px] font-semibold">
+            <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Daily</div>
+            <div className="text-gray-200 text-sm font-semibold">
               ~{dailyAvg}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Pax/Year</div>
-            <div className="text-gray-200 text-[13px] font-semibold">
+            <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Pax/Year</div>
+            <div className="text-gray-200 text-sm font-semibold">
               {formatPax(route.total_annual_passengers)}
             </div>
           </div>
