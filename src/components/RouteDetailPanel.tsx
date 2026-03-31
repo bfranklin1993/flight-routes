@@ -25,36 +25,88 @@ export default function RouteDetailPanel({
   );
   const dailyAvg = Math.round(totalDailyFlights / 7);
 
+  const formatPax = (n: number) =>
+    n >= 1_000_000
+      ? `${(n / 1_000_000).toFixed(1)}M`
+      : `${(n / 1_000).toFixed(0)}K`;
+
   return (
     <div className="absolute top-0 right-0 h-full w-72 bg-white shadow-xl border-l
                     border-gray-100 z-40 overflow-y-auto animate-slide-in">
-      {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-gray-100">
-        <div>
-          <div className="text-lg font-bold text-gray-800">
-            {origin.iata} → {dest.iata}
-          </div>
-          <div className="text-sm text-gray-500">{dest.name}</div>
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-3 z-50 w-7 h-7 rounded-full bg-white/20
+                   flex items-center justify-center text-gray-300 hover:text-white
+                   hover:bg-white/30 transition-colors text-sm backdrop-blur-sm"
+      >
+        ✕
+      </button>
+
+      {/* Boarding Pass Header */}
+      <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>
+        {/* Top strip */}
+        <div className="flex justify-between items-center px-4 py-2.5"
+             style={{ background: "#16213e" }}>
+          <span className="text-gray-300 text-[10px] uppercase tracking-[2px]">
+            Boarding Pass
+          </span>
+          <span className="text-gray-500 text-[10px]">
+            #{rank} of {totalRoutes}
+          </span>
         </div>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center
-                     text-gray-500 hover:bg-gray-200 transition-colors text-sm"
-        >
-          ✕
-        </button>
+
+        {/* Route codes */}
+        <div className="flex justify-between items-center px-4 py-5">
+          <div className="text-center">
+            <div className="text-white text-[28px] font-bold tracking-[2px]">
+              {origin.iata}
+            </div>
+            <div className="text-gray-400 text-[11px] mt-0.5">{origin.city}</div>
+          </div>
+          <div className="flex-1 px-3 relative">
+            <div className="border-t border-dashed border-gray-600 w-full" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                            text-gray-400 text-sm">
+              ✈
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-white text-[28px] font-bold tracking-[2px]">
+              {dest.iata}
+            </div>
+            <div className="text-gray-400 text-[11px] mt-0.5">{dest.city}</div>
+          </div>
+        </div>
+
+        {/* Perforated line */}
+        <div className="mx-2" style={{ borderTop: "2px dashed #2a2a4a" }} />
+
+        {/* Stats strip */}
+        <div className="flex justify-between px-4 py-3">
+          <div>
+            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Distance</div>
+            <div className="text-gray-200 text-[13px] font-semibold">
+              {route.distance_miles.toLocaleString()} mi
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Daily</div>
+            <div className="text-gray-200 text-[13px] font-semibold">
+              ~{dailyAvg}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-gray-500 text-[8px] uppercase tracking-[1px]">Pax/Year</div>
+            <div className="text-gray-200 text-[13px] font-semibold">
+              {formatPax(route.total_annual_passengers)}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Rank badge */}
-      <div className="px-5 pt-4 pb-1">
-        <span className="inline-block text-xs font-semibold text-indigo-600 bg-indigo-50
-                         rounded-full px-2.5 py-1">
-          #{rank} of {totalRoutes} routes from {origin.iata}
-        </span>
-      </div>
-
-      <div className="p-5 pt-3">
-        {/* Airlines */}
+      {/* Airlines + Search */}
+      <div className="p-5">
         <div className="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-3">
           Airlines
         </div>
@@ -88,34 +140,6 @@ export default function RouteDetailPanel({
           })}
         </div>
 
-        {/* Stats */}
-        <div className="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-3 mt-5">
-          Stats
-        </div>
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-          {dailyAvg > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Total daily flights</span>
-              <span className="font-semibold text-gray-800">~{dailyAvg}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Distance</span>
-            <span className="font-semibold text-gray-800">
-              {route.distance_miles.toLocaleString()} mi
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">~Passengers/yr</span>
-            <span className="font-semibold text-gray-800">
-              {route.total_annual_passengers >= 1_000_000
-                ? `${(route.total_annual_passengers / 1_000_000).toFixed(1)}M`
-                : `${(route.total_annual_passengers / 1_000).toFixed(0)}K`}
-            </span>
-          </div>
-        </div>
-
-        {/* Search Flights link */}
         <a
           href={googleFlightsUrl(origin.iata, dest.iata)}
           target="_blank"
