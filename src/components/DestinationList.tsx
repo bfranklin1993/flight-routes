@@ -112,8 +112,15 @@ export default function DestinationList({
                 <div className="flex justify-between items-start w-full">
                   {/* Left: City + code + airlines */}
                   <div className="min-w-0 flex-1">
-                    <div className="solari-text text-lg font-bold truncate leading-tight">
-                      {route.destination.city.toUpperCase()}
+                    <div className="flex items-baseline gap-2">
+                      <span className="solari-text text-lg font-bold truncate leading-tight">
+                        {route.destination.city.toUpperCase()}
+                      </span>
+                      {route.destination.region && (
+                        <span className="text-gray-500 text-xs flex-shrink-0">
+                          {route.destination.region}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2.5 mt-1.5">
                       <span className="solari-text-amber text-sm tracking-wider">

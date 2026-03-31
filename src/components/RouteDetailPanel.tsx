@@ -60,12 +60,15 @@ export default function RouteDetailPanel({
                 <div className="text-white text-4xl font-bold tracking-[3px]">
                   {origin.iata}
                 </div>
-                <div className="text-gray-400 text-sm mt-1">{origin.city}</div>
+                <div className="text-gray-200 text-sm mt-1">{origin.city}</div>
+                {origin.region && (
+                  <div className="text-gray-400 text-xs">{origin.region}</div>
+                )}
               </div>
               <div className="flex-1 px-4 relative">
-                <div className="border-t border-dashed border-gray-600 w-full" />
+                <div className="border-t border-dashed border-gray-500 w-full" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                                text-gray-400 text-base">
+                                text-gray-300 text-base">
                   ✈
                 </div>
               </div>
@@ -73,7 +76,10 @@ export default function RouteDetailPanel({
                 <div className="text-white text-4xl font-bold tracking-[3px]">
                   {dest.iata}
                 </div>
-                <div className="text-gray-400 text-sm mt-1">{dest.city}</div>
+                <div className="text-gray-200 text-sm mt-1">{dest.city}</div>
+                {dest.region && (
+                  <div className="text-gray-400 text-xs">{dest.region}</div>
+                )}
               </div>
             </div>
 
@@ -82,19 +88,19 @@ export default function RouteDetailPanel({
             <div className="flex justify-between px-6 py-4">
               <div>
                 <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Distance</div>
-                <div className="text-gray-200 text-base font-semibold">
+                <div className="text-white text-base font-semibold">
                   {route.distance_miles.toLocaleString()} mi
                 </div>
               </div>
               <div className="text-center">
                 <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Daily</div>
-                <div className="text-gray-200 text-base font-semibold">
+                <div className="text-white text-base font-semibold">
                   ~{dailyAvg}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Flight</div>
-                <div className="text-gray-200 text-base font-semibold">
+                <div className="text-white text-base font-semibold">
                   ~{estimateFlightTime(route.distance_miles)}
                 </div>
               </div>

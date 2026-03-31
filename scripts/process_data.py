@@ -172,8 +172,48 @@ def download_ourairports() -> pd.DataFrame:
         "municipality": "city",
         "latitude_deg": "lat",
         "longitude_deg": "lon",
+        "iso_country": "country",
+        "iso_region": "region",
     })
-    return df[["iata", "name", "city", "lat", "lon"]].copy()
+
+    # Build a human-readable region label: state for US, country name for international
+    country_names = {
+        "CA": "Canada", "MX": "Mexico", "GB": "United Kingdom", "FR": "France",
+        "DE": "Germany", "JP": "Japan", "KR": "South Korea", "CN": "China",
+        "AU": "Australia", "NZ": "New Zealand", "BR": "Brazil", "CO": "Colombia",
+        "CL": "Chile", "PE": "Peru", "AR": "Argentina", "EC": "Ecuador",
+        "PA": "Panama", "CR": "Costa Rica", "SV": "El Salvador", "GT": "Guatemala",
+        "HN": "Honduras", "BZ": "Belize", "NI": "Nicaragua", "DO": "Dominican Republic",
+        "JM": "Jamaica", "BS": "Bahamas", "KY": "Cayman Islands", "TT": "Trinidad & Tobago",
+        "BB": "Barbados", "AG": "Antigua", "LC": "Saint Lucia", "GD": "Grenada",
+        "VC": "St. Vincent", "TC": "Turks & Caicos", "BM": "Bermuda", "AW": "Aruba",
+        "CW": "Curaçao", "SX": "Sint Maarten", "PR": "Puerto Rico", "VI": "US Virgin Islands",
+        "IS": "Iceland", "IE": "Ireland", "NL": "Netherlands", "BE": "Belgium",
+        "CH": "Switzerland", "AT": "Austria", "IT": "Italy", "ES": "Spain",
+        "PT": "Portugal", "GR": "Greece", "TR": "Turkey", "IL": "Israel",
+        "AE": "UAE", "QA": "Qatar", "SA": "Saudi Arabia", "JO": "Jordan",
+        "EG": "Egypt", "MA": "Morocco", "ET": "Ethiopia", "KE": "Kenya",
+        "NG": "Nigeria", "GH": "Ghana", "SN": "Senegal", "ZA": "South Africa",
+        "IN": "India", "TH": "Thailand", "SG": "Singapore", "PH": "Philippines",
+        "TW": "Taiwan", "HK": "Hong Kong", "FJ": "Fiji", "PF": "French Polynesia",
+        "SE": "Sweden", "NO": "Norway", "DK": "Denmark", "FI": "Finland",
+        "PL": "Poland", "CZ": "Czech Republic", "HU": "Hungary", "RO": "Romania",
+        "HR": "Croatia", "RS": "Serbia", "BG": "Bulgaria", "LT": "Lithuania",
+        "LV": "Latvia", "EE": "Estonia", "UZ": "Uzbekistan", "GE": "Georgia",
+        "AM": "Armenia", "KW": "Kuwait", "BH": "Bahrain", "OM": "Oman",
+        "CU": "Cuba", "HT": "Haiti", "GU": "Guam", "AS": "American Samoa",
+        "MH": "Marshall Islands", "PW": "Palau", "FM": "Micronesia",
+    }
+
+    def make_region_label(row):
+        if row["country"] == "US":
+            # Extract state from iso_region (e.g., "US-IL" -> "IL")
+            return row["region"].split("-")[-1] if pd.notna(row["region"]) else ""
+        return country_names.get(row["country"], row["country"])
+
+    df["region_label"] = df.apply(make_region_label, axis=1)
+
+    return df[["iata", "name", "city", "region_label", "lat", "lon"]].copy()
 
 
 def load_t100_data() -> pd.DataFrame:
@@ -309,6 +349,7 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
                     "iata": dest,
                     "name": dest_info["name"],
                     "city": str(dest_info["city"]) if pd.notna(dest_info["city"]) else dest,
+                    "region": str(dest_info["region_label"]) if pd.notna(dest_info.get("region_label")) else "",
                     "lat": round(dest_info["lat"], 4),
                     "lon": round(dest_info["lon"], 4),
                 },
@@ -335,6 +376,7 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
                 "iata": origin,
                 "name": origin_info["name"],
                 "city": str(origin_info["city"]) if pd.notna(origin_info["city"]) else origin,
+                "region": str(origin_info["region_label"]) if pd.notna(origin_info.get("region_label")) else "",
                 "lat": round(origin_info["lat"], 4),
                 "lon": round(origin_info["lon"], 4),
             },
@@ -354,6 +396,7 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
                 "iata": iata,
                 "name": info["name"],
                 "city": str(info["city"]) if pd.notna(info["city"]) else iata,
+                "region": str(info["region_label"]) if pd.notna(info.get("region_label")) else "",
                 "lat": round(info["lat"], 4),
                 "lon": round(info["lon"], 4),
             })

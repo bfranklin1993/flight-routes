@@ -2,6 +2,7 @@ export interface Airport {
   iata: string;
   name: string;
   city: string;
+  region?: string;
   lat: number;
   lon: number;
 }
@@ -30,6 +31,7 @@ export interface AirportIndex {
   iata: string;
   name: string;
   city: string;
+  region?: string;
   lat: number;
   lon: number;
 }
