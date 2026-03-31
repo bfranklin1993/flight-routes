@@ -91,7 +91,7 @@ export default function DestinationList({
         </div>
 
         {/* Card grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {sorted.map((route) => {
             const totalDaily = Math.round(
               route.airlines.reduce((s, a) => s + a.weekly_flights, 0) / 7
@@ -105,42 +105,45 @@ export default function DestinationList({
               <button
                 key={route.destination.iata}
                 onClick={() => onSelectRoute(route)}
-                className="solari-row flex-col items-start gap-1 p-3.5 rounded-lg
+                className="solari-row flex-col items-start gap-0 p-4 rounded-lg
                            hover:brightness-125 transition-all cursor-pointer text-left"
               >
-                {/* Top row: code + city */}
-                <div className="flex items-baseline gap-2.5 w-full">
-                  <span className="solari-text-amber text-lg font-bold tracking-wider">
-                    {route.destination.iata}
-                  </span>
-                  <span className="solari-text text-base truncate flex-1">
-                    {route.destination.city.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Bottom row: airlines, time, freq */}
-                <div className="flex items-center justify-between w-full mt-1">
-                  <div className="flex gap-1.5 items-center">
-                    {visibleAirlines.map((a) => (
-                      <span
-                        key={a.code}
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: getAirlineColor(a.code) }}
-                      />
-                    ))}
-                    {!selectedAirline && route.airlines.length > 5 && (
-                      <span className="text-gray-500 text-[10px]">
-                        +{route.airlines.length - 5}
+                {/* Top: city + stats */}
+                <div className="flex justify-between items-start w-full">
+                  {/* Left: City + code + airlines */}
+                  <div className="min-w-0 flex-1">
+                    <div className="solari-text text-lg font-bold truncate leading-tight">
+                      {route.destination.city.toUpperCase()}
+                    </div>
+                    <div className="flex items-center gap-2.5 mt-1.5">
+                      <span className="solari-text-amber text-sm tracking-wider">
+                        {route.destination.iata}
                       </span>
-                    )}
+                      <div className="flex gap-1 items-center">
+                        {visibleAirlines.map((a) => (
+                          <span
+                            key={a.code}
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: getAirlineColor(a.code) }}
+                          />
+                        ))}
+                        {!selectedAirline && route.airlines.length > 5 && (
+                          <span className="text-gray-500 text-[10px]">
+                            +{route.airlines.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-4 items-center">
-                    <span className="text-gray-400 text-xs">
+
+                  {/* Right: time + freq stacked */}
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <div className="text-gray-400 text-sm">
                       {estimateFlightTime(route.distance_miles)}
-                    </span>
-                    <span className="solari-text-amber text-xs">
+                    </div>
+                    <div className="solari-text-amber text-sm font-bold mt-0.5">
                       {totalDaily > 0 ? `${totalDaily}/DAY` : `${totalWeekly}/WK`}
-                    </span>
+                    </div>
                   </div>
                 </div>
               </button>

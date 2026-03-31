@@ -35,109 +35,104 @@ export default function RouteDetailPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 z-40"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 z-40" onClick={onClose} />
 
-      {/* Floating panels */}
-      <div className="absolute top-20 right-6 z-50 flex flex-col gap-3 w-[340px] animate-slide-in">
-        {/* Main card */}
-        <div className="rounded-2xl overflow-hidden shadow-2xl">
-          {/* Close button */}
+      {/* Centered floating panels */}
+      <div className="absolute top-16 right-8 z-50 flex flex-col gap-3 w-[380px] animate-slide-in">
+        {/* Boarding pass card */}
+        <div className="rounded-2xl overflow-hidden shadow-2xl relative">
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 z-50 w-7 h-7 rounded-full bg-white/20
+            className="absolute top-3 right-3 z-50 w-8 h-8 rounded-full bg-white/15
                        flex items-center justify-center text-gray-300 hover:text-white
-                       hover:bg-white/30 transition-colors text-sm backdrop-blur-sm"
+                       hover:bg-white/25 transition-colors text-base"
           >
             ✕
           </button>
 
-          {/* Boarding Pass Header */}
           <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>
-            <div className="flex justify-end items-center px-4 py-2"
+            <div className="flex justify-end items-center px-5 py-2.5"
                  style={{ background: "#16213e" }}>
               <span className="text-gray-500 text-xs">
                 #{rank} of {totalRoutes} routes
               </span>
             </div>
 
-            <div className="flex justify-between items-center px-5 py-5">
+            <div className="flex justify-between items-center px-6 py-6">
               <div className="text-center">
-                <div className="text-white text-3xl font-bold tracking-[2px]">
+                <div className="text-white text-4xl font-bold tracking-[3px]">
                   {origin.iata}
                 </div>
-                <div className="text-gray-400 text-xs mt-0.5">{origin.city}</div>
+                <div className="text-gray-400 text-sm mt-1">{origin.city}</div>
               </div>
-              <div className="flex-1 px-3 relative">
+              <div className="flex-1 px-4 relative">
                 <div className="border-t border-dashed border-gray-600 w-full" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                                text-gray-400 text-sm">
+                                text-gray-400 text-base">
                   ✈
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-white text-3xl font-bold tracking-[2px]">
+                <div className="text-white text-4xl font-bold tracking-[3px]">
                   {dest.iata}
                 </div>
-                <div className="text-gray-400 text-xs mt-0.5">{dest.city}</div>
+                <div className="text-gray-400 text-sm mt-1">{dest.city}</div>
               </div>
             </div>
 
-            <div className="mx-3" style={{ borderTop: "2px dashed #2a2a4a" }} />
+            <div className="mx-4" style={{ borderTop: "2px dashed #2a2a4a" }} />
 
-            <div className="flex justify-between px-5 py-3">
+            <div className="flex justify-between px-6 py-4">
               <div>
-                <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Distance</div>
-                <div className="text-gray-200 text-sm font-semibold">
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Distance</div>
+                <div className="text-gray-200 text-base font-semibold">
                   {route.distance_miles.toLocaleString()} mi
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Daily</div>
-                <div className="text-gray-200 text-sm font-semibold">
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Daily</div>
+                <div className="text-gray-200 text-base font-semibold">
                   ~{dailyAvg}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Flight</div>
-                <div className="text-gray-200 text-sm font-semibold">
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Flight</div>
+                <div className="text-gray-200 text-base font-semibold">
                   ~{estimateFlightTime(route.distance_miles)}
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Airlines — Solari board */}
-          <div className="solari-board px-3 py-3">
-            <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="solari-header">Airline</span>
-              <span className="solari-header">Freq</span>
-            </div>
+        {/* Airlines card */}
+        <div className="solari-board rounded-2xl overflow-hidden shadow-2xl px-4 py-4">
+          <div className="flex items-center justify-between px-2 mb-2">
+            <span className="solari-header">Airline</span>
+            <span className="solari-header">Freq</span>
+          </div>
 
-            {route.airlines.map((airline) => {
-              const dailyFlights = Math.round(airline.weekly_flights / 7);
-              return (
-                <div key={airline.code} className="solari-row">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      className="w-1.5 h-4 rounded-sm flex-shrink-0"
-                      style={{ backgroundColor: getAirlineColor(airline.code) }}
-                    />
-                    <span className="solari-text truncate">
-                      {airline.name.toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="solari-text-amber flex-shrink-0">
-                    {dailyFlights > 0
-                      ? `${dailyFlights}/DAY`
-                      : `${airline.weekly_flights}/WK`}
+          {route.airlines.map((airline) => {
+            const dailyFlights = Math.round(airline.weekly_flights / 7);
+            return (
+              <div key={airline.code} className="solari-row">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-1.5 h-5 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: getAirlineColor(airline.code) }}
+                  />
+                  <span className="solari-text truncate text-sm">
+                    {airline.name.toUpperCase()}
                   </span>
                 </div>
-              );
-            })}
-          </div>
+                <span className="solari-text-amber flex-shrink-0 text-sm">
+                  {dailyFlights > 0
+                    ? `${dailyFlights}/DAY`
+                    : `${airline.weekly_flights}/WK`}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Search Flights card */}
@@ -145,7 +140,7 @@ export default function RouteDetailPanel({
           href={googleFlightsUrl(origin.iata, dest.iata)}
           target="_blank"
           rel="noopener noreferrer"
-          className="block text-center bg-gray-800 text-white py-3 rounded-2xl
+          className="block text-center bg-gray-800 text-white py-3.5 rounded-2xl
                      font-semibold text-sm hover:bg-gray-700 transition-colors shadow-2xl"
         >
           Search Flights →
