@@ -17,11 +17,7 @@ function estimateFlightTime(miles: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function flightTimeMinutes(miles: number): number {
-  return Math.round((miles / 500 + 0.5) * 60);
-}
-
-type SortKey = "destination" | "time" | "freq" | "airlines";
+type SortKey = "destination" | "time" | "freq";
 type SortDir = "asc" | "desc";
 
 export default function DestinationList({
@@ -60,8 +56,6 @@ export default function DestinationList({
         const bFreq = b.airlines.reduce((s, al) => s + al.weekly_flights, 0);
         return dir * (aFreq - bFreq);
       }
-      case "airlines":
-        return dir * (a.airlines.length - b.airlines.length);
       default:
         return 0;
     }
@@ -72,52 +66,32 @@ export default function DestinationList({
 
   return (
     <div className="absolute inset-0 z-30 overflow-y-auto solari-board">
-      <div className="max-w-5xl mx-auto pt-28 pb-12 px-6">
-        {/* Summary */}
-        <div className="px-1 mb-3">
+      <div className="max-w-6xl mx-auto pt-28 pb-12 px-6">
+        {/* Sort controls */}
+        <div className="flex items-center justify-between mb-4">
           <span className="text-gray-400 text-sm">
             {filtered.length} nonstop destinations
-            {selectedAirline && " on this airline"}
           </span>
+          <div className="flex gap-1">
+            {(["destination", "freq", "time"] as SortKey[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => handleSort(key)}
+                className={`px-3 py-1 rounded text-xs font-semibold transition-colors
+                  ${sortKey === key
+                    ? "bg-gray-700 text-amber-400"
+                    : "text-gray-500 hover:text-gray-300"
+                  }`}
+              >
+                {key === "destination" ? "A-Z" : key === "freq" ? "Frequency" : "Flight Time"}
+                {arrow(key)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-lg">
-          {/* Column headers — clickable for sort */}
-          <div className="flex items-center px-4 py-2.5 bg-black/30">
-            <button
-              onClick={() => handleSort("destination")}
-              className="solari-header w-16 text-left hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              Code{arrow("destination")}
-            </button>
-            <button
-              onClick={() => handleSort("destination")}
-              className="solari-header flex-1 text-left hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              Destination{arrow("destination")}
-            </button>
-            <button
-              onClick={() => handleSort("airlines")}
-              className="solari-header w-28 text-right hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              Airlines{arrow("airlines")}
-            </button>
-            <button
-              onClick={() => handleSort("time")}
-              className="solari-header w-20 text-right hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              Time{arrow("time")}
-            </button>
-            <button
-              onClick={() => handleSort("freq")}
-              className="solari-header w-20 text-right hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              Freq{arrow("freq")}
-            </button>
-          </div>
-
-          {/* Rows */}
+        {/* Card grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {sorted.map((route) => {
             const totalDaily = Math.round(
               route.airlines.reduce((s, a) => s + a.weekly_flights, 0) / 7
@@ -125,41 +99,50 @@ export default function DestinationList({
             const totalWeekly = route.airlines.reduce((s, a) => s + a.weekly_flights, 0);
             const visibleAirlines = selectedAirline
               ? route.airlines.filter((a) => a.code === selectedAirline)
-              : route.airlines.slice(0, 6);
+              : route.airlines.slice(0, 5);
 
             return (
               <button
                 key={route.destination.iata}
                 onClick={() => onSelectRoute(route)}
-                className="solari-row w-full text-left hover:brightness-125
-                           transition-all cursor-pointer"
+                className="solari-row flex-col items-start gap-1 p-3.5 rounded-lg
+                           hover:brightness-125 transition-all cursor-pointer text-left"
               >
-                <span className="solari-text-amber w-16 flex-shrink-0">
-                  {route.destination.iata}
-                </span>
-                <span className="solari-text flex-1 truncate">
-                  {route.destination.city.toUpperCase()}
-                </span>
-                <span className="w-28 flex justify-end gap-1.5 flex-shrink-0 items-center">
-                  {visibleAirlines.map((a) => (
-                    <span
-                      key={a.code}
-                      className="w-2.5 h-2.5 rounded-full inline-block"
-                      style={{ backgroundColor: getAirlineColor(a.code) }}
-                    />
-                  ))}
-                  {!selectedAirline && route.airlines.length > 6 && (
-                    <span className="text-gray-500 text-[10px]">
-                      +{route.airlines.length - 6}
+                {/* Top row: code + city */}
+                <div className="flex items-baseline gap-2.5 w-full">
+                  <span className="solari-text-amber text-lg font-bold tracking-wider">
+                    {route.destination.iata}
+                  </span>
+                  <span className="solari-text text-base truncate flex-1">
+                    {route.destination.city.toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Bottom row: airlines, time, freq */}
+                <div className="flex items-center justify-between w-full mt-1">
+                  <div className="flex gap-1.5 items-center">
+                    {visibleAirlines.map((a) => (
+                      <span
+                        key={a.code}
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: getAirlineColor(a.code) }}
+                      />
+                    ))}
+                    {!selectedAirline && route.airlines.length > 5 && (
+                      <span className="text-gray-500 text-[10px]">
+                        +{route.airlines.length - 5}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-4 items-center">
+                    <span className="text-gray-400 text-xs">
+                      {estimateFlightTime(route.distance_miles)}
                     </span>
-                  )}
-                </span>
-                <span className="solari-text w-20 text-right text-xs flex-shrink-0">
-                  {estimateFlightTime(route.distance_miles)}
-                </span>
-                <span className="solari-text-amber w-20 text-right text-xs flex-shrink-0">
-                  {totalDaily > 0 ? `${totalDaily}/DAY` : `${totalWeekly}/WK`}
-                </span>
+                    <span className="solari-text-amber text-xs">
+                      {totalDaily > 0 ? `${totalDaily}/DAY` : `${totalWeekly}/WK`}
+                    </span>
+                  </div>
+                </div>
               </button>
             );
           })}
