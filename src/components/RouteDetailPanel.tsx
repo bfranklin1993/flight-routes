@@ -45,19 +45,16 @@ export default function RouteDetailPanel({
 
       {/* Boarding Pass Header */}
       <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>
-        {/* Top strip */}
-        <div className="flex justify-between items-center px-4 py-2.5"
+        {/* Top strip — rank only */}
+        <div className="flex justify-end items-center px-4 py-2.5"
              style={{ background: "#16213e" }}>
-          <span className="text-gray-300 text-xs uppercase tracking-[2px]">
-            Boarding Pass
-          </span>
           <span className="text-gray-500 text-xs">
-            #{rank} of {totalRoutes}
+            #{rank} of {totalRoutes} routes
           </span>
         </div>
 
         {/* Route codes */}
-        <div className="flex justify-between items-center px-4 py-5">
+        <div className="flex justify-between items-center px-5 py-5">
           <div className="text-center">
             <div className="text-white text-3xl font-bold tracking-[2px]">
               {origin.iata}
@@ -83,7 +80,7 @@ export default function RouteDetailPanel({
         <div className="mx-2" style={{ borderTop: "2px dashed #2a2a4a" }} />
 
         {/* Stats strip */}
-        <div className="flex justify-between px-4 py-3">
+        <div className="flex justify-between px-5 py-3">
           <div>
             <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Distance</div>
             <div className="text-gray-200 text-sm font-semibold">
@@ -105,46 +102,48 @@ export default function RouteDetailPanel({
         </div>
       </div>
 
-      {/* Airlines + Search */}
-      <div className="p-5">
-        <div className="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-3">
+      {/* Airlines — Solari board style */}
+      <div style={{ background: "#0a0a0a", fontFamily: "'Courier New', monospace" }}
+           className="px-4 py-4">
+        <div className="text-[9px] uppercase tracking-[1px] text-gray-600 mb-2 px-1">
           Airlines
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {route.airlines.map((airline) => {
             const dailyFlights = Math.round(airline.weekly_flights / 7);
             return (
               <div
                 key={airline.code}
-                className="bg-gray-50 rounded-lg p-3 flex items-center justify-between"
+                className="flex items-center justify-between px-2.5 py-2 rounded"
+                style={{ background: "#141414", border: "1px solid #222" }}
               >
-                <div>
+                <div className="flex items-center gap-2.5">
                   <div
-                    className="font-semibold text-sm"
-                    style={{ color: getAirlineColor(airline.code) }}
-                  >
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getAirlineColor(airline.code) }}
+                  />
+                  <span className="text-gray-200 text-sm font-semibold tracking-wide">
                     {airline.name}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {dailyFlights > 0
-                      ? `~${dailyFlights}/day (${airline.weekly_flights}/week)`
-                      : `~${airline.weekly_flights}/week`}
-                  </div>
+                  </span>
                 </div>
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: getAirlineColor(airline.code) }}
-                />
+                <span className="text-amber-400 text-xs font-bold tracking-wider">
+                  {dailyFlights > 0
+                    ? `${dailyFlights}/DAY`
+                    : `${airline.weekly_flights}/WK`}
+                </span>
               </div>
             );
           })}
         </div>
+      </div>
 
+      {/* Search Flights */}
+      <div className="p-5">
         <a
           href={googleFlightsUrl(origin.iata, dest.iata)}
           target="_blank"
           rel="noopener noreferrer"
-          className="block mt-5 text-center bg-gray-800 text-white py-2.5 rounded-lg
+          className="block text-center bg-gray-800 text-white py-2.5 rounded-lg
                      font-semibold text-sm hover:bg-gray-700 transition-colors"
         >
           Search Flights →
