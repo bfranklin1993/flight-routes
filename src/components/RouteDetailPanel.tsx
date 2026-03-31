@@ -41,21 +41,18 @@ export default function RouteDetailPanel({
       <div className="absolute top-16 right-8 z-50 flex flex-col gap-3 w-[380px] animate-slide-in">
         {/* Boarding pass card */}
         <div className="rounded-2xl overflow-hidden shadow-2xl relative">
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 z-50 w-8 h-8 rounded-full bg-white/15
-                       flex items-center justify-center text-gray-300 hover:text-white
-                       hover:bg-white/25 transition-colors text-base"
-          >
-            ✕
-          </button>
-
           <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>
-            <div className="flex justify-end items-center px-5 py-2.5"
+            <div className="flex justify-between items-center px-5 py-2.5"
                  style={{ background: "#16213e" }}>
               <span className="text-gray-500 text-xs">
                 #{rank} of {totalRoutes} routes
               </span>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-300 transition-colors text-xs"
+              >
+                ✕ close
+              </button>
             </div>
 
             <div className="flex justify-between items-center px-6 py-6">

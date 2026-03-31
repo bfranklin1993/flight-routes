@@ -125,10 +125,14 @@ export default function DestinationList({
                             key={a.code}
                             className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: getAirlineColor(a.code) }}
+                            title={a.name}
                           />
                         ))}
                         {!selectedAirline && route.airlines.length > 5 && (
-                          <span className="text-gray-500 text-[10px]">
+                          <span
+                            className="text-gray-500 text-[10px]"
+                            title={route.airlines.slice(5).map((a) => a.name).join(", ")}
+                          >
                             +{route.airlines.length - 5}
                           </span>
                         )}
