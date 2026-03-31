@@ -78,8 +78,8 @@ export default function Home() {
       )}
 
       {/* Top bar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
-        <div className="flex gap-2 items-center">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 w-full px-4 md:px-0 md:w-auto">
+        <div className="flex gap-2 items-center w-full md:w-auto">
           <AirportSearch
             onSelect={handleAirportSelect}
             selected={selectedAirport}

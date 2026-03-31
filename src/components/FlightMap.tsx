@@ -16,10 +16,12 @@ interface FlightMapProps {
 
 const SOURCE_ARCS = "route-arcs";
 const SOURCE_DOTS = "route-dots";
+const SOURCE_ORIGIN = "origin-marker";
 const LAYER_ARCS = "route-arc-lines";
 const LAYER_ARCS_HIGHLIGHT = "route-arc-highlight";
 const LAYER_DOTS = "route-dot-circles";
 const LAYER_DOTS_HIGHLIGHT = "route-dot-highlight";
+const LAYER_ORIGIN = "origin-marker-circle";
 
 function buildArcFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
   const origin = routeData.airport;
@@ -113,6 +115,10 @@ export default function FlightMap({
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
+      map.addSource(SOURCE_ORIGIN, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
 
       map.addLayer({
         id: LAYER_ARCS,
@@ -174,6 +180,19 @@ export default function FlightMap({
         filter: ["==", ["get", "destIata"], ""],
       });
 
+      map.addLayer({
+        id: LAYER_ORIGIN,
+        type: "circle",
+        source: SOURCE_ORIGIN,
+        paint: {
+          "circle-color": "#1a1a2e",
+          "circle-radius": 9,
+          "circle-opacity": 1,
+          "circle-stroke-width": 3,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
       readyRef.current = true;
     });
 
@@ -223,6 +242,10 @@ export default function FlightMap({
         type: "FeatureCollection",
         features: [],
       });
+      (map.getSource(SOURCE_ORIGIN) as maplibregl.GeoJSONSource)?.setData({
+        type: "FeatureCollection",
+        features: [],
+      });
       return;
     }
 
@@ -236,6 +259,20 @@ export default function FlightMap({
     (map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features: dotFeatures,
+    });
+
+    (map.getSource(SOURCE_ORIGIN) as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: [routeData.airport.lon, routeData.airport.lat],
+          },
+        },
+      ],
     });
 
     // Fly to the selected airport

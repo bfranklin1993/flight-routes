@@ -86,7 +86,7 @@ export default function AirportSearch({ onSelect, selected, dark }: AirportSearc
   const placeholderColor = dark ? "placeholder-gray-500" : "placeholder-gray-400";
 
   return (
-    <div className="relative w-[480px]">
+    <div className="relative w-full max-w-[480px]">
       {selected && !isOpen ? (
         <button
           onClick={() => {
