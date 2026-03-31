@@ -25,10 +25,12 @@ export default function RouteDetailPanel({
   );
   const dailyAvg = Math.round(totalDailyFlights / 7);
 
-  const formatPax = (n: number) =>
-    n >= 1_000_000
-      ? `${(n / 1_000_000).toFixed(1)}M`
-      : `${(n / 1_000).toFixed(0)}K`;
+  const estimateFlightTime = (miles: number): string => {
+    const hours = miles / 500 + 0.5;
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
 
   return (
     <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl border-l
@@ -90,9 +92,9 @@ export default function RouteDetailPanel({
             </div>
           </div>
           <div className="text-right">
-            <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Pax/Year</div>
+            <div className="text-gray-500 text-[9px] uppercase tracking-[1px]">Flight</div>
             <div className="text-gray-200 text-sm font-semibold">
-              {formatPax(route.total_annual_passengers)}
+              ~{estimateFlightTime(route.distance_miles)}
             </div>
           </div>
         </div>

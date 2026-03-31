@@ -58,7 +58,7 @@ export default function Home() {
 
   return (
     <main className="h-screen w-screen relative overflow-hidden">
-      {/* Map (always rendered for smooth transitions) */}
+      {/* Map */}
       <FlightMap
         routeData={routeData}
         selectedAirline={selectedAirline}
@@ -66,7 +66,7 @@ export default function Home() {
         onSelectRoute={setSelectedRoute}
       />
 
-      {/* List view overlay */}
+      {/* List view */}
       {view === "list" && routeData && (
         <DestinationList
           routeData={routeData}
@@ -75,35 +75,19 @@ export default function Home() {
         />
       )}
 
-      {/* Search + Filters + View Toggle overlay */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center">
+      {/* Top bar */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
         <div className="flex gap-2 items-center">
           <AirportSearch onSelect={handleAirportSelect} selected={selectedAirport} />
           {routeData && (
-            <div className="flex bg-white rounded-lg shadow-md overflow-hidden">
-              <button
-                onClick={() => setView("map")}
-                className={`px-3 py-3 text-sm transition-colors ${
-                  view === "map"
-                    ? "bg-gray-800 text-white"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
-                title="Map view"
-              >
-                🗺
-              </button>
-              <button
-                onClick={() => setView("list")}
-                className={`px-3 py-3 text-sm transition-colors ${
-                  view === "list"
-                    ? "bg-gray-800 text-white"
-                    : "text-gray-500 hover:bg-gray-50"
-                }`}
-                title="List view"
-              >
-                ☰
-              </button>
-            </div>
+            <button
+              onClick={() => setView(view === "map" ? "list" : "map")}
+              className="bg-white rounded-lg shadow-md px-3.5 py-3 text-sm
+                         text-gray-600 hover:bg-gray-50 transition-colors font-medium"
+              title={view === "map" ? "Show list" : "Show map"}
+            >
+              {view === "map" ? "List" : "Map"}
+            </button>
           )}
         </div>
         {routeData && (
@@ -115,7 +99,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Loading indicator */}
+      {/* Loading */}
       {loading && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20
                         bg-white rounded-lg px-4 py-2 shadow-md text-sm text-gray-500">
