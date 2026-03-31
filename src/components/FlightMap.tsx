@@ -27,6 +27,7 @@ function buildArcFeatures(routeData: AirportRoutes, selectedAirline: string | nu
   const origin = routeData.airport;
 
   return routeData.routes
+    .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
     .filter((route) =>
       !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
     )
@@ -56,6 +57,7 @@ function buildArcFeatures(routeData: AirportRoutes, selectedAirline: string | nu
 
 function buildDotFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
   return routeData.routes
+    .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
     .filter((route) =>
       !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
     )

@@ -38,7 +38,7 @@ export default function RouteDetailPanel({
       <div className="absolute inset-0 z-40" onClick={onClose} />
 
       {/* Centered floating panels */}
-      <div className="absolute bottom-0 left-0 right-0 md:bottom-auto md:top-16 md:left-auto md:right-8 z-50 flex flex-col gap-3 w-full md:w-[380px] max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible animate-slide-in pb-4 md:pb-0 px-3 md:px-0">
+      <div className="absolute bottom-0 left-0 right-0 md:bottom-auto md:top-16 md:left-auto md:right-8 z-50 flex flex-col gap-3 w-full md:w-[380px] max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible animate-slide-up md:animate-slide-in pb-4 md:pb-0 px-3 md:px-0">
         {/* Boarding pass card */}
         <div className="rounded-2xl overflow-hidden shadow-2xl relative">
           <div style={{ background: "#1a1a2e", fontFamily: "'Courier New', monospace" }}>

@@ -16,7 +16,7 @@ export default function Home() {
   const [selectedAirline, setSelectedAirline] = useState<string | null>(null);
   const [view, setView] = useState<"map" | "list">("map");
 
-  const { data: routeData, loading } = useRouteData(selectedAirport?.iata ?? null);
+  const { data: routeData, loading, error } = useRouteData(selectedAirport?.iata ?? null);
 
   const airlines = useMemo(() => {
     if (!routeData) return [];
@@ -113,6 +113,14 @@ export default function Home() {
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20
                         bg-white rounded-lg px-4 py-2 shadow-md text-sm text-gray-500">
           Loading routes...
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20
+                        bg-white rounded-lg px-4 py-2 shadow-md text-sm text-red-500">
+          No route data available for this airport
         </div>
       )}
 
