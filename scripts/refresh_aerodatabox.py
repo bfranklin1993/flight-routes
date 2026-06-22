@@ -10,6 +10,7 @@ Requires AERODATABOX_KEY environment variable (RapidAPI key).
 
 import json
 import os
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -112,17 +113,31 @@ def merge_routes(icao: str, api_routes: list[dict]) -> None:
 
 def main():
     if not API_KEY:
-        print("ERROR: Set AERODATABOX_KEY environment variable")
-        return
+        print("ERROR: Set AERODATABOX_KEY environment variable", file=sys.stderr)
+        sys.exit(1)
 
     print(f"Refreshing routes for {len(TOP_AIRPORTS)} airports...")
 
+    success_count = 0
+    fail_count = 0
     for icao in TOP_AIRPORTS:
         iata = ICAO_TO_IATA.get(icao, icao)
         print(f"Fetching {iata} ({icao})...")
         routes = fetch_routes(icao)
+        if routes is None:
+            fail_count += 1
+            continue
+        success_count += 1
         if routes:
             merge_routes(icao, routes)
+
+    if success_count == 0:
+        print(
+            f"ERROR: All {fail_count} airport fetches failed "
+            "(auth error, network, or API outage). Check AERODATABOX_KEY.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print("Done!")
 
