@@ -42,4 +42,9 @@ next-env.d.ts
 
 # project-specific
 scripts/raw/
+scripts/.wiki_report.json
 .superpowers/
+
+# Python
+__pycache__/
+*.pyc

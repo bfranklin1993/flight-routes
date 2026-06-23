@@ -1,0 +1,26 @@
+==Airlines and destinations==
+===Passenger===
+<!-- Synthetic fixture: some older airport articles use a raw {| class="wikitable" |}
+     instead of the {{Airport destination list}} template. This mirrors that legacy
+     format (| Airline || Destinations) so the parser's fallback path is exercised.
+     Could not find a live en.wikipedia article still using the raw-table form for
+     the airlines list (all checked airports had been converted to the template),
+     so this fixture reproduces the historical markup faithfully. -->
+{| class="wikitable" style="font-size: 95%" border="1"
+|-
+! Airlines !! Destinations
+|-
+| [[Alaska Airlines]] || [[Seattle–Tacoma International Airport|Seattle/Tacoma]], [[Portland International Airport|Portland (OR)]]<ref name="ex1"/> <br /> '''Seasonal:''' [[Ted Stevens Anchorage International Airport|Anchorage]]
+|-
+| [[Delta Air Lines]] || [[Salt Lake City International Airport|Salt Lake City]],<ref>{{cite web|url=http://example.com|title=Delta route|date=2020}}</ref> [[Hartsfield–Jackson Atlanta International Airport|Atlanta]] (begins March 1, 2027)
+|-
+| [[United Express]] || [[Denver International Airport|Denver]]
+|}
+
+===Cargo===
+{| class="wikitable"
+|-
+! Airlines !! Destinations
+|-
+| [[FedEx Express]] || [[Memphis International Airport|Memphis]]
+|}
