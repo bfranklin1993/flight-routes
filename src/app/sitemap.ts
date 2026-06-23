@@ -12,6 +12,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${BASE_URL}/how-it-works`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
     ...airports.map((a) => ({
       url: `${BASE_URL}/${a.iata.toLowerCase()}`,
       changeFrequency: "monthly" as const,

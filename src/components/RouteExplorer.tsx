@@ -9,7 +9,9 @@ import AirportSearch from "@/components/AirportSearch";
 import AirlineFilters from "@/components/AirlineFilters";
 import RouteDetailPanel from "@/components/RouteDetailPanel";
 import DestinationList from "@/components/DestinationList";
+import WhatsNew from "@/components/WhatsNew";
 import Footer from "@/components/Footer";
+import { getNewRoutes, isNewRoute } from "@/lib/routes";
 
 interface RouteExplorerProps {
   initialAirport: AirportIndex | null;
@@ -39,7 +41,11 @@ export default function RouteExplorer({ initialAirport }: RouteExplorerProps) {
 
     const airlineMap = new Map<string, { code: string; name: string; count: number }>();
     for (const route of routeData.routes) {
+      // New/seasonal routes have no DOT data and empty airline codes; keep them
+      // out of the airline filter so no blank pill appears.
+      if (isNewRoute(route)) continue;
       for (const airline of route.airlines) {
+        if (!airline.code) continue;
         const existing = airlineMap.get(airline.code);
         if (existing) {
           existing.count++;
@@ -140,6 +146,17 @@ export default function RouteExplorer({ initialAirport }: RouteExplorerProps) {
           No route data available for this airport
         </div>
       )}
+
+      {/* What's new feed (map view only) */}
+      {view === "map" &&
+        routeData &&
+        getNewRoutes(routeData).length > 0 && (
+          <WhatsNew
+            routeData={routeData}
+            selectedRoute={selectedRoute}
+            onSelect={setSelectedRoute}
+          />
+        )}
 
       {/* Detail panel */}
       {selectedRoute && routeData && (

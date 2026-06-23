@@ -19,6 +19,9 @@ export interface Route {
   airlines: AirlineRoute[];
   distance_miles: number;
   total_annual_passengers: number;
+  sources?: string[];
+  seasonal?: boolean;
+  note?: string | null;
 }
 
 export interface AirportRoutes {
