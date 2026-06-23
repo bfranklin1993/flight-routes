@@ -482,6 +482,7 @@ import json
 import os
 import sys
 import time
+import unicodedata
 import urllib.parse
 from collections import Counter
 from datetime import date
@@ -527,7 +528,12 @@ def normalize_title(s: str) -> str:
     """
     if s is None:
         return ""
-    s = urllib.parse.unquote(str(s))
+    # NFKC first so accent/dash encoding variants (e.g. composed vs decomposed
+    # "Cancún", or compatibility dash codepoints) collapse to one canonical form
+    # before any other transformation. Applied identically on both sides (map
+    # build and lookup).
+    s = unicodedata.normalize("NFKC", str(s))
+    s = urllib.parse.unquote(s)
     s = s.replace("_", " ")
     # Collapse punctuation that differs across sources (OurAirports vs the
     # Wikipedia article title) into spaces so e.g. "Austin-Bergstrom",
@@ -798,6 +804,171 @@ def resolve_destinations(
     return resolved, unresolved
 
 
+_REDIRECT_BATCH = 50  # MediaWiki titles= cap per query is 50 for non-bots.
+
+
+def _wiki_api_get(params: dict, session) -> dict | None:
+    """One polite + resilient MediaWiki GET. Returns parsed JSON, or None if the
+    request fails permanently (after retries) or returns a non-transient API
+    error. Mirrors the retry/backoff/maxlag logic in fetch_airport_section."""
+    import requests
+
+    backoff = 2.0
+    last_err = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = session.get(WIKI_API, params=params, timeout=REQUEST_TIMEOUT)
+        except requests.RequestException as e:
+            last_err = e
+            _sleep_backoff(None, backoff, attempt)
+            backoff *= 2
+            continue
+
+        if resp.status_code in (429, 503) or 500 <= resp.status_code < 600:
+            last_err = f"HTTP {resp.status_code}"
+            _sleep_backoff(resp.headers.get("Retry-After"), backoff, attempt)
+            backoff *= 2
+            continue
+
+        try:
+            parsed = resp.json()
+        except ValueError as e:
+            last_err = e
+            _sleep_backoff(None, backoff, attempt)
+            backoff *= 2
+            continue
+
+        err = parsed.get("error")
+        if err and err.get("code") == "maxlag":
+            last_err = "maxlag"
+            _sleep_backoff(resp.headers.get("Retry-After"), backoff, attempt)
+            backoff *= 2
+            continue
+        if err:
+            # Non-transient API error: skip (don't crash).
+            print(f"  [redirects] API error {err.get('code')!r}", file=sys.stderr)
+            return None
+        return parsed
+
+    print(f"  [redirects] request failed after retries: {last_err}", file=sys.stderr)
+    return None
+
+
+def resolve_redirects(
+    titles: set[str],
+    session,
+    title_to_iata: dict[str, str],
+) -> dict[str, str]:
+    """Recover IATA codes for destination titles that don't string-match the
+    canonical OurAirports article title, by reconciling Wikipedia redirects.
+
+    Two directions are handled in one query per batch:
+
+    1. FORWARD: the destination link is itself a redirect (e.g. a variant form
+       that redirects to a canonical article). ``query.redirects`` /
+       ``query.normalized`` give the from->to chain to the canonical title; if
+       that canonical title is in ``title_to_iata`` we resolve it.
+
+    2. REVERSE (the common case in practice): the destination link IS the
+       current canonical article (e.g. "Cancún International Airport",
+       "Dulles International Airport", "Haneda Airport"), while the OurAirports
+       title is a now-stale REDIRECT into it ("Cancun International Airport",
+       "Washington Dulles International Airport", "Tokyo International Airport").
+       ``prop=redirects`` lists every title that redirects INTO the destination
+       article; if any of those redirect-sources is in ``title_to_iata`` we
+       resolve the destination to that IATA.
+
+    Args:
+        titles: a set of RAW (un-normalized) destination titles that failed to
+            resolve against ``title_to_iata``.
+        session: a requests.Session (polite User-Agent already set).
+        title_to_iata: the existing NORMALIZED title -> IATA map.
+
+    Returns ``{normalized_original_title: iata}`` for the titles that newly
+    resolve. Titles that still can't be mapped are omitted. A failed batch is
+    skipped (logged) rather than crashing the run.
+    """
+    out: dict[str, str] = {}
+    title_list = [t for t in titles if t and t.strip()]
+    if not title_list:
+        return out
+
+    for start in range(0, len(title_list), _REDIRECT_BATCH):
+        batch = title_list[start:start + _REDIRECT_BATCH]
+
+        # Accumulate per-batch state. prop=redirects can paginate via
+        # rdcontinue when many redirect-sources exist across the 50 titles.
+        forward_hop: dict[str, str] = {}        # from-title -> to-title (lower-effort chain)
+        reverse_iata: dict[str, str] = {}       # canonical page title -> IATA (from redirect sources)
+        cont: dict | None = None
+
+        while True:
+            params = {
+                "action": "query",
+                "format": "json",
+                "redirects": 1,
+                "maxlag": MAXLAG,
+                "prop": "redirects",
+                "rdlimit": "max",
+                "rdnamespace": 0,
+                "titles": "|".join(batch),
+            }
+            if cont:
+                params.update(cont)
+
+            data = _wiki_api_get(params, session)
+            if data is None:
+                break  # skip this batch; partial state below is still usable
+
+            query = data.get("query", {}) if isinstance(data.get("query"), dict) else {}
+
+            # FORWARD chains (only present on the first page; harmless to repeat).
+            for entry in (query.get("normalized") or []):
+                frm, to = entry.get("from"), entry.get("to")
+                if frm is not None and to is not None:
+                    forward_hop[frm] = to
+            for entry in (query.get("redirects") or []):
+                frm, to = entry.get("from"), entry.get("to")
+                if frm is not None and to is not None:
+                    forward_hop[frm] = to
+
+            # REVERSE: for each canonical page, scan the titles that redirect in.
+            pages = query.get("pages", {})
+            if isinstance(pages, dict):
+                for page in pages.values():
+                    page_title = page.get("title")
+                    if not page_title:
+                        continue
+                    for rd in (page.get("redirects") or []):
+                        src = rd.get("title")
+                        if not src:
+                            continue
+                        iata = title_to_iata.get(normalize_title(src))
+                        if iata and page_title not in reverse_iata:
+                            reverse_iata[page_title] = iata
+
+            cont = data.get("continue")
+            if not cont:
+                break
+            time.sleep(POLITE_SLEEP)
+
+        # Resolve each requested title: follow forward hops to its canonical
+        # title, then try direct map, then the reverse-redirect map.
+        for original in batch:
+            final = original
+            seen = set()
+            while final in forward_hop and final not in seen:
+                seen.add(final)
+                final = forward_hop[final]
+            iata = title_to_iata.get(normalize_title(final)) or reverse_iata.get(final)
+            if iata:
+                out[normalize_title(original)] = iata
+
+        time.sleep(POLITE_SLEEP)
+
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Merge (additive + provenance)
 # ---------------------------------------------------------------------------
@@ -1028,6 +1199,13 @@ def main(argv: list[str] | None = None) -> int:
     unresolved_counter: Counter[str] = Counter()
 
     n = len(targets)
+
+    # ----- Pass 1: fetch + parse, store parsed routes, accumulate the set of
+    # distinct destination titles that don't already resolve. Each airport's
+    # wikitext is fetched exactly once here. -----
+    parsed_by_iata: dict[str, list[ParsedRoute]] = {}
+    unresolved_titles: set[str] = set()  # raw titles not in title_to_iata yet
+
     for idx, iata in enumerate(targets, 1):
         attempted += 1
         title = iata_to_title.get(iata)
@@ -1057,11 +1235,45 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             parsed = parse_destination_list(section)
-            if not parsed:
-                parse_empty += 1
-                time.sleep(POLITE_SLEEP)
-                continue
+        except Exception as e:  # resilient per-airport
+            print(f"[{idx}/{n}] {iata}: parse error - {e}", file=sys.stderr)
+            time.sleep(POLITE_SLEEP)
+            continue
 
+        if not parsed:
+            parse_empty += 1
+            time.sleep(POLITE_SLEEP)
+            continue
+
+        parsed_by_iata[iata] = parsed
+        for pr in parsed:
+            if normalize_title(pr.dest_title) not in title_to_iata:
+                unresolved_titles.add(pr.dest_title)
+
+        time.sleep(POLITE_SLEEP)
+
+    # ----- Redirect pass: resolve the unresolved titles via the MediaWiki API
+    # (follow redirects/normalizations to canonical titles) and AUGMENT the
+    # title_to_iata map with whatever newly resolves. -----
+    if unresolved_titles:
+        print(f"\nResolving {len(unresolved_titles)} unresolved destination "
+              f"titles via Wikipedia redirects...")
+        try:
+            recovered = resolve_redirects(unresolved_titles, session, title_to_iata)
+        except Exception as e:  # never let the redirect pass kill the run
+            print(f"  [redirects] pass failed: {e}", file=sys.stderr)
+            recovered = {}
+        # Merge recovered {normalized_title: iata} into the lookup map.
+        for norm_title, dest_iata in recovered.items():
+            title_to_iata.setdefault(norm_title, dest_iata)
+        print(f"  recovered {len(recovered)} titles via redirect resolution.")
+
+    # ----- Pass 2: resolve (against the augmented map) + merge. No fetching. ---
+    for idx, iata in enumerate(targets, 1):
+        parsed = parsed_by_iata.get(iata)
+        if not parsed:
+            continue
+        try:
             resolved, unresolved = resolve_destinations(parsed, iata, title_to_iata)
             unresolved_counter.update(unresolved)
             total_resolved += len(resolved)
@@ -1079,8 +1291,6 @@ def main(argv: list[str] | None = None) -> int:
                           f"{stats['existing_confirmed']} confirmed")
         except Exception as e:  # resilient per-airport
             print(f"[{idx}/{n}] {iata}: processing error - {e}", file=sys.stderr)
-
-        time.sleep(POLITE_SLEEP)
 
     # ----- Summary -----
     top_unresolved = unresolved_counter.most_common(15)
