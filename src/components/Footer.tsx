@@ -7,7 +7,7 @@ interface FooterProps {
 export default function Footer({ lastUpdated }: FooterProps) {
   return (
     <div className="absolute bottom-2 left-3 z-10 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
-      <span>Route data: US DOT / BTS · OurAirports · Wikipedia</span>
+      <span>Route data: US DOT / BTS · OurAirports</span>
       <span aria-hidden="true">·</span>
       <Link
         href="/how-it-works"

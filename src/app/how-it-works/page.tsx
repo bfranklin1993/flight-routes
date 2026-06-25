@@ -4,12 +4,12 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "How Nonstop Routes Works",
   description:
-    "How Nonstop Routes is built: official US DOT (BTS) filings for passenger volume and airlines, live route announcements for new and seasonal service, and OurAirports for airport locations.",
+    "How Nonstop Routes is built: official US DOT (BTS) filings for passenger volume and airlines, and OurAirports for airport locations.",
   alternates: { canonical: "/how-it-works" },
   openGraph: {
     title: "How Nonstop Routes Works",
     description:
-      "Where the routes come from: official US DOT (BTS) filings, live route announcements, and OurAirports data, assembled into one interactive map.",
+      "Where the routes come from: official US DOT (BTS) filings and OurAirports data, assembled into one interactive map.",
     url: "/how-it-works",
     type: "article",
   },
@@ -19,12 +19,7 @@ const SOURCES = [
   {
     label: "Volume & airlines",
     name: "US DOT (BTS)",
-    desc: "Every passenger and departure US carriers officially report. The source of truth for how busy a route is.",
-  },
-  {
-    label: "New & seasonal",
-    name: "Live announcements",
-    desc: "Newly launched, returning, and seasonal routes, captured from public airport records, often before the first flight.",
+    desc: "Every passenger and departure US carriers officially report. The source of truth for which routes fly and how busy each one is.",
   },
   {
     label: "Airports",
@@ -53,19 +48,18 @@ export default function HowItWorksPage() {
         <p className="mt-5 text-lg leading-relaxed text-[#56544E]">
           Nonstop Routes is built on the official record of US air travel: the
           same Department of Transportation filings the airlines themselves
-          report, layered with live route announcements so you see new service
-          the moment it is public.
+          report. No estimates, no scraped booking sites.
         </p>
 
         <h2 className="mt-12 text-xl font-bold tracking-tight">
-          Three sources, one map
+          Two sources, one map
         </h2>
         <p className="mt-3 leading-relaxed text-[#56544E]">
           Each route on the map is assembled from authoritative, public data. We
           do not guess and we do not scrape booking sites.
         </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {SOURCES.map((s) => (
             <div
               key={s.name}
@@ -86,18 +80,16 @@ export default function HowItWorksPage() {
           How fresh is it?
         </h2>
         <p className="mt-3 leading-relaxed text-[#56544E]">
-          Route availability refreshes every week. Passenger-volume figures
-          reflect the most recent DOT reporting cycle, which the government
-          publishes on a rolling several-month delay. So a brand-new route
-          appears right away, marked &ldquo;new,&rdquo; and its volume fills in
-          once the official numbers are released.
+          Routes and passenger-volume figures reflect the most recent DOT
+          reporting cycle, which the government publishes on a rolling
+          several-month delay. It is the authoritative record of what actually
+          flew, so the map trades real-time speed for accuracy you can trust.
         </p>
 
         <p className="mt-14 border-t border-[#E6E2D8] pt-6 text-sm leading-relaxed text-[#56544E]">
-          New, returning, and seasonal route information incorporates content
-          from Wikipedia, used under CC BY-SA 4.0. Passenger and departure
-          figures are from the U.S. Bureau of Transportation Statistics (public
-          domain). Airport data from OurAirports (public domain).
+          Passenger and departure figures are from the U.S. Bureau of
+          Transportation Statistics (public domain). Airport data from
+          OurAirports (public domain).
         </p>
       </div>
     </main>

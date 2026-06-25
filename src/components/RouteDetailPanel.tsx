@@ -3,7 +3,6 @@
 import type { Route, Airport } from "@/lib/types";
 import { getAirlineColor } from "@/lib/airlines";
 import { googleFlightsUrl } from "@/lib/google-flights";
-import { isNewRoute, newRouteLabel } from "@/lib/routes";
 
 interface RouteDetailPanelProps {
   route: Route;
@@ -21,8 +20,6 @@ export default function RouteDetailPanel({
   onClose,
 }: RouteDetailPanelProps) {
   const dest = route.destination;
-  const isNew = isNewRoute(route);
-  const label = isNew ? newRouteLabel(route) : null;
   const totalDailyFlights = route.airlines.reduce(
     (sum, a) => sum + a.weekly_flights, 0
   );
@@ -48,7 +45,7 @@ export default function RouteDetailPanel({
             <div className="flex justify-between items-center px-5 py-2.5"
                  style={{ background: "#16213e" }}>
               <span className="text-gray-500 text-xs">
-                {isNew ? "New / seasonal route" : `#${rank} of ${totalRoutes} routes`}
+                #{rank} of {totalRoutes} routes
               </span>
               <button
                 onClick={onClose}
@@ -88,74 +85,28 @@ export default function RouteDetailPanel({
 
             <div className="mx-4" style={{ borderTop: "2px dashed #2a2a4a" }} />
 
-            {isNew ? (
-              <div className="flex justify-between items-center px-6 py-4">
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Distance</div>
-                  <div className="text-white text-base font-semibold">
-                    {route.distance_miles.toLocaleString()} mi
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Status</div>
-                  <span
-                    className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full
-                               text-[11px] font-bold"
-                    style={{
-                      backgroundColor: "#FFE9DF",
-                      color: "#C23E0E",
-                      border: "1px solid #FFD0BC",
-                      fontFamily: "'Courier New', monospace",
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="rotate-45 rounded-[1px]"
-                      style={{ width: 7, height: 7, backgroundColor: "#FF5A1F" }}
-                    />
-                    {label?.text}
-                  </span>
+            <div className="flex justify-between px-6 py-4">
+              <div>
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Distance</div>
+                <div className="text-white text-base font-semibold">
+                  {route.distance_miles.toLocaleString()} mi
                 </div>
               </div>
-            ) : (
-              <div className="flex justify-between px-6 py-4">
-                <div>
-                  <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Distance</div>
-                  <div className="text-white text-base font-semibold">
-                    {route.distance_miles.toLocaleString()} mi
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Daily</div>
-                  <div className="text-white text-base font-semibold">
-                    ~{dailyAvg}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Flight</div>
-                  <div className="text-white text-base font-semibold">
-                    ~{estimateFlightTime(route.distance_miles)}
-                  </div>
+              <div className="text-center">
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Daily</div>
+                <div className="text-white text-base font-semibold">
+                  ~{dailyAvg}
                 </div>
               </div>
-            )}
+              <div className="text-right">
+                <div className="text-gray-500 text-[10px] uppercase tracking-[1px]">Flight</div>
+                <div className="text-white text-base font-semibold">
+                  ~{estimateFlightTime(route.distance_miles)}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Volume pending note (new/seasonal only) */}
-        {isNew && (
-          <div
-            className="rounded-2xl px-4 py-3 text-[12.5px] shadow-2xl"
-            style={{
-              backgroundColor: "#FFE9DF",
-              color: "#C23E0E",
-              border: "1px dashed #FFC3AC",
-            }}
-          >
-            Passenger volume pending. This route is newer than the latest federal
-            reporting cycle.
-          </div>
-        )}
 
         {/* Airlines card */}
         <div className="solari-board rounded-2xl overflow-hidden shadow-2xl px-4 py-4">
@@ -164,26 +115,23 @@ export default function RouteDetailPanel({
             <span className="solari-header">Freq</span>
           </div>
 
-          {route.airlines.map((airline, i) => {
+          {route.airlines.map((airline) => {
             const dailyFlights = Math.round(airline.weekly_flights / 7);
-            const swatchColor = isNew ? "#FF5A1F" : getAirlineColor(airline.code);
             return (
-              <div key={airline.code || `${airline.name}-${i}`} className="solari-row">
+              <div key={airline.code} className="solari-row">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
                     className="w-1.5 h-5 rounded-sm flex-shrink-0"
-                    style={{ backgroundColor: swatchColor }}
+                    style={{ backgroundColor: getAirlineColor(airline.code) }}
                   />
                   <span className="solari-text truncate text-sm">
                     {airline.name.toUpperCase()}
                   </span>
                 </div>
                 <span className="solari-text-amber flex-shrink-0 text-sm">
-                  {isNew
-                    ? (label?.kind === "seasonal" ? "SEASONAL" : "NEW")
-                    : dailyFlights > 0
-                      ? `${dailyFlights}/DAY`
-                      : `${airline.weekly_flights}/WK`}
+                  {dailyFlights > 0
+                    ? `${dailyFlights}/DAY`
+                    : `${airline.weekly_flights}/WK`}
                 </span>
               </div>
             );
