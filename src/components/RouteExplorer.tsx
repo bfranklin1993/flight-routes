@@ -9,6 +9,7 @@ import AirportSearch from "@/components/AirportSearch";
 import AirlineFilters from "@/components/AirlineFilters";
 import RouteDetailPanel from "@/components/RouteDetailPanel";
 import DestinationList from "@/components/DestinationList";
+import MapLegend from "@/components/MapLegend";
 import Footer from "@/components/Footer";
 
 interface RouteExplorerProps {
@@ -139,6 +140,11 @@ export default function RouteExplorer({ initialAirport }: RouteExplorerProps) {
                         bg-white rounded-lg px-4 py-2 shadow-md text-sm text-red-500">
           No route data available for this airport
         </div>
+      )}
+
+      {/* Legend (map view only; the list view names carriers in full) */}
+      {view === "map" && routeData && !selectedRoute && (
+        <MapLegend airlines={airlines} selectedAirline={selectedAirline} />
       )}
 
       {/* Detail panel */}

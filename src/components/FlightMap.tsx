@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { AirportRoutes, Route } from "@/lib/types";
 import { greatCircleArc } from "@/lib/geo";
-import { getAirlineColor } from "@/lib/airlines";
+import { getAirlineColor, getFocusColor } from "@/lib/airlines";
 
 interface FlightMapProps {
   routeData: AirportRoutes | null;
@@ -23,61 +23,79 @@ const LAYER_DOTS = "route-dot-circles";
 const LAYER_DOTS_HIGHLIGHT = "route-dot-highlight";
 const LAYER_ORIGIN = "origin-marker-circle";
 
+/**
+ * Weekly flights carried on a route, scoped to the active filter when there is
+ * one. This drives line width and dot size, so volume reads without relying on
+ * colour.
+ */
+function weeklyFlightsFor(
+  route: AirportRoutes["routes"][number],
+  selectedAirline: string | null
+): number {
+  if (selectedAirline) {
+    return route.airlines.find((a) => a.code === selectedAirline)?.weekly_flights ?? 0;
+  }
+  return route.airlines.reduce((s, a) => s + a.weekly_flights, 0);
+}
+
+/**
+ * Colour for a route. When a carrier is filtered every visible arc belongs to
+ * it, so we use the emphasis colour rather than the shared "other" grey.
+ */
+function routeColorFor(
+  route: AirportRoutes["routes"][number],
+  selectedAirline: string | null
+): string {
+  if (selectedAirline) return getFocusColor(selectedAirline);
+  return getAirlineColor(route.airlines[0].code);
+}
+
+function visibleRoutes(routeData: AirportRoutes, selectedAirline: string | null) {
+  return routeData.routes
+    .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
+    .filter((route) =>
+      !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
+    );
+}
+
 function buildArcFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
   const origin = routeData.airport;
 
-  return routeData.routes
-    .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
-    .filter((route) =>
-      !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
-    )
-    .map((route) => {
-      // Use selected airline's color, or the top airline's color
-      const airline = selectedAirline
-        ? route.airlines.find((a) => a.code === selectedAirline)!
-        : route.airlines[0];
-      const coords = greatCircleArc(
-        [origin.lon, origin.lat],
-        [route.destination.lon, route.destination.lat]
-      );
+  return visibleRoutes(routeData, selectedAirline).map((route) => {
+    const coords = greatCircleArc(
+      [origin.lon, origin.lat],
+      [route.destination.lon, route.destination.lat]
+    );
 
-      return {
-        type: "Feature" as const,
-        properties: {
-          destIata: route.destination.iata,
-          color: getAirlineColor(airline.code),
-        },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: coords,
-        },
-      };
-    });
+    return {
+      type: "Feature" as const,
+      properties: {
+        destIata: route.destination.iata,
+        color: routeColorFor(route, selectedAirline),
+        weeklyFlights: weeklyFlightsFor(route, selectedAirline),
+      },
+      geometry: {
+        type: "LineString" as const,
+        coordinates: coords,
+      },
+    };
+  });
 }
 
 function buildDotFeatures(routeData: AirportRoutes, selectedAirline: string | null) {
-  return routeData.routes
-    .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
-    .filter((route) =>
-      !selectedAirline || route.airlines.some((a) => a.code === selectedAirline)
-    )
-    .map((route) => {
-      const airline = selectedAirline
-        ? route.airlines.find((a) => a.code === selectedAirline)!
-        : route.airlines[0];
-      return {
-        type: "Feature" as const,
-        properties: {
-          destIata: route.destination.iata,
-          color: getAirlineColor(airline.code),
-          name: route.destination.city,
-        },
-        geometry: {
-          type: "Point" as const,
-          coordinates: [route.destination.lon, route.destination.lat],
-        },
-      };
-    });
+  return visibleRoutes(routeData, selectedAirline).map((route) => ({
+    type: "Feature" as const,
+    properties: {
+      destIata: route.destination.iata,
+      color: routeColorFor(route, selectedAirline),
+      weeklyFlights: weeklyFlightsFor(route, selectedAirline),
+      name: route.destination.city,
+    },
+    geometry: {
+      type: "Point" as const,
+      coordinates: [route.destination.lon, route.destination.lat],
+    },
+  }));
 }
 
 export default function FlightMap({
@@ -88,12 +106,96 @@ export default function FlightMap({
 }: FlightMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const readyRef = useRef(false);
   const routeDataRef = useRef<AirportRoutes | null>(routeData);
+  const selectedAirlineRef = useRef<string | null>(selectedAirline);
+  const selectedRouteRef = useRef<Route | null>(selectedRoute);
 
+  // Kept in sync so the map's own "load" handler, and the click handlers
+  // registered once at init, can read current values. Declared before the
+  // effects that call apply* below: effects run in declaration order, so these
+  // are always up to date by the time the map is written to.
   useEffect(() => {
     routeDataRef.current = routeData;
   }, [routeData]);
+  useEffect(() => {
+    selectedAirlineRef.current = selectedAirline;
+  }, [selectedAirline]);
+  useEffect(() => {
+    selectedRouteRef.current = selectedRoute;
+  }, [selectedRoute]);
+
+  /**
+   * Write route data onto the map.
+   *
+   * Callable from both the data effect and the map's "load" handler. Route JSON
+   * is a small same-origin file off the CDN, while the map style, glyphs and
+   * sprites come cross-origin, so the data almost always wins the race. The
+   * previous implementation guarded on a ready ref and returned; because
+   * mutating a ref triggers no re-render, the effect never ran again and the map
+   * stayed empty until some unrelated state change re-triggered it.
+   */
+  const applyRouteData = useCallback(() => {
+    const map = mapRef.current;
+    // Sources only exist once "load" has run; that handler calls this itself.
+    if (!map || !map.getSource(SOURCE_ARCS)) return;
+
+    const routeData = routeDataRef.current;
+    const selectedAirline = selectedAirlineRef.current;
+
+    const arcs = map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource;
+    const dots = map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource;
+    const origin = map.getSource(SOURCE_ORIGIN) as maplibregl.GeoJSONSource;
+
+    if (!routeData) {
+      const empty = { type: "FeatureCollection" as const, features: [] };
+      arcs?.setData(empty);
+      dots?.setData(empty);
+      origin?.setData(empty);
+      return;
+    }
+
+    arcs?.setData({
+      type: "FeatureCollection",
+      features: buildArcFeatures(routeData, selectedAirline),
+    });
+    dots?.setData({
+      type: "FeatureCollection",
+      features: buildDotFeatures(routeData, selectedAirline),
+    });
+    origin?.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: [routeData.airport.lon, routeData.airport.lat],
+          },
+        },
+      ],
+    });
+
+    map.flyTo({
+      center: [routeData.airport.lon, routeData.airport.lat],
+      zoom: 4.5,
+      duration: 1000,
+    });
+  }, []);
+
+  /** Dim everything except the selected route. Same load-race fix as above. */
+  const applyHighlight = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer(LAYER_ARCS)) return;
+
+    const selectedRoute = selectedRouteRef.current;
+    const destIata = selectedRoute?.destination.iata ?? "";
+
+    map.setPaintProperty(LAYER_ARCS, "line-opacity", selectedRoute ? 0.15 : 0.6);
+    map.setPaintProperty(LAYER_DOTS, "circle-opacity", selectedRoute ? 0.15 : 0.7);
+    map.setFilter(LAYER_ARCS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
+    map.setFilter(LAYER_DOTS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
+  }, []);
 
   // Initialize map
   useEffect(() => {
@@ -128,7 +230,15 @@ export default function FlightMap({
         source: SOURCE_ARCS,
         paint: {
           "line-color": ["get", "color"],
-          "line-width": 1.5,
+          // Width carries route volume, so the map reads without relying on
+          // colour alone and shows which routes are actually significant.
+          "line-width": [
+            "interpolate", ["linear"], ["get", "weeklyFlights"],
+            1, 0.8,
+            20, 1.6,
+            80, 2.8,
+            250, 4.5,
+          ],
           "line-opacity": 0.6,
         },
       });
@@ -139,7 +249,13 @@ export default function FlightMap({
         source: SOURCE_ARCS,
         paint: {
           "line-color": ["get", "color"],
-          "line-width": 3,
+          "line-width": [
+            "interpolate", ["linear"], ["get", "weeklyFlights"],
+            1, 2.5,
+            20, 3.5,
+            80, 5,
+            250, 7,
+          ],
           "line-opacity": 1,
         },
         filter: ["==", ["get", "destIata"], ""],
@@ -151,11 +267,12 @@ export default function FlightMap({
         source: SOURCE_DOTS,
         paint: {
           "circle-color": ["get", "color"],
+          // Radius scales with volume as well as zoom, matching the arcs.
           "circle-radius": [
             "interpolate", ["linear"], ["zoom"],
-            3, 3,
-            6, 5,
-            10, 7,
+            3, ["interpolate", ["linear"], ["get", "weeklyFlights"], 1, 2, 250, 5],
+            6, ["interpolate", ["linear"], ["get", "weeklyFlights"], 1, 3.5, 250, 8],
+            10, ["interpolate", ["linear"], ["get", "weeklyFlights"], 1, 5, 250, 11],
           ],
           "circle-opacity": 0.7,
           "circle-stroke-width": 1,
@@ -195,7 +312,10 @@ export default function FlightMap({
         },
       });
 
-      readyRef.current = true;
+      // Data may already have arrived before the style finished loading, so
+      // apply whatever we have now rather than waiting for another change.
+      applyRouteData();
+      applyHighlight();
     });
 
     map.on("click", LAYER_DOTS, (e) => {
@@ -226,83 +346,16 @@ export default function FlightMap({
     return () => {
       map.remove();
       mapRef.current = null;
-      readyRef.current = false;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update route data on the map
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !readyRef.current) return;
+    applyRouteData();
+  }, [routeData, selectedAirline, applyRouteData]);
 
-    if (!routeData) {
-      (map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource)?.setData({
-        type: "FeatureCollection",
-        features: [],
-      });
-      (map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource)?.setData({
-        type: "FeatureCollection",
-        features: [],
-      });
-      (map.getSource(SOURCE_ORIGIN) as maplibregl.GeoJSONSource)?.setData({
-        type: "FeatureCollection",
-        features: [],
-      });
-      return;
-    }
-
-    const arcFeatures = buildArcFeatures(routeData, selectedAirline);
-    const dotFeatures = buildDotFeatures(routeData, selectedAirline);
-
-    (map.getSource(SOURCE_ARCS) as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features: arcFeatures,
-    });
-    (map.getSource(SOURCE_DOTS) as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features: dotFeatures,
-    });
-
-    (map.getSource(SOURCE_ORIGIN) as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Point",
-            coordinates: [routeData.airport.lon, routeData.airport.lat],
-          },
-        },
-      ],
-    });
-
-    // Fly to the selected airport
-    map.flyTo({
-      center: [routeData.airport.lon, routeData.airport.lat],
-      zoom: 4.5,
-      duration: 1000,
-    });
-  }, [routeData, selectedAirline]);
-
-  // Handle route selection highlighting
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !readyRef.current) return;
-
-    if (selectedRoute) {
-      const destIata = selectedRoute.destination.iata;
-      map.setPaintProperty(LAYER_ARCS, "line-opacity", 0.15);
-      map.setPaintProperty(LAYER_DOTS, "circle-opacity", 0.15);
-      map.setFilter(LAYER_ARCS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
-      map.setFilter(LAYER_DOTS_HIGHLIGHT, ["==", ["get", "destIata"], destIata]);
-    } else {
-      map.setPaintProperty(LAYER_ARCS, "line-opacity", 0.6);
-      map.setPaintProperty(LAYER_DOTS, "circle-opacity", 0.7);
-      map.setFilter(LAYER_ARCS_HIGHLIGHT, ["==", ["get", "destIata"], ""]);
-      map.setFilter(LAYER_DOTS_HIGHLIGHT, ["==", ["get", "destIata"], ""]);
-    }
-  }, [selectedRoute]);
+    applyHighlight();
+  }, [selectedRoute, applyHighlight]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 }

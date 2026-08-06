@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getAirlineColor, needsDarkText } from "@/lib/airlines";
+import { getAirlineColor, getFocusColor, needsDarkText } from "@/lib/airlines";
 
 interface AirlineFiltersProps {
   airlines: { code: string; name: string }[];
@@ -33,7 +33,12 @@ export default function AirlineFilters({
     <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
       {visible.map((airline) => {
         const isSelected = selectedAirline === airline.code;
-        const color = getAirlineColor(airline.code);
+        // Selected pills use the emphasis colour so the pill matches the arcs
+        // it just drew; carriers in the shared bucket would otherwise show a
+        // grey pill over vermillion routes.
+        const color = isSelected
+          ? getFocusColor(airline.code)
+          : getAirlineColor(airline.code);
         const darkText = needsDarkText(airline.code);
 
         return (
