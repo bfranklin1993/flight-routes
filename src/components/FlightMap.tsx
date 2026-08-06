@@ -50,6 +50,39 @@ function routeColorFor(
   return getAirlineColor(route.airlines[0].code);
 }
 
+/**
+ * Shift a longitude into the same 360-degree window as the origin.
+ *
+ * Without this, bounds for a Pacific hub span the long way round the globe:
+ * HNL at -157.9 plus Tokyo at +139.8 reads as a 297-degree box through
+ * Greenwich rather than the short hop across the Pacific.
+ */
+function normalizeLon(lon: number, originLon: number): number {
+  let result = lon;
+  while (result - originLon > 180) result -= 360;
+  while (result - originLon < -180) result += 360;
+  return result;
+}
+
+/**
+ * Bounds covering the origin and every visible destination, so the camera frames
+ * the actual answer instead of a fixed zoom that cuts off long-haul routes.
+ */
+function boundsFor(routeData: AirportRoutes, selectedAirline: string | null) {
+  const origin = routeData.airport;
+  const bounds = new maplibregl.LngLatBounds(
+    [origin.lon, origin.lat],
+    [origin.lon, origin.lat]
+  );
+  for (const route of visibleRoutes(routeData, selectedAirline)) {
+    bounds.extend([
+      normalizeLon(route.destination.lon, origin.lon),
+      route.destination.lat,
+    ]);
+  }
+  return bounds;
+}
+
 function visibleRoutes(routeData: AirportRoutes, selectedAirline: string | null) {
   return routeData.routes
     .filter((route) => route.airlines.reduce((s, a) => s + a.weekly_flights, 0) > 0)
@@ -176,9 +209,13 @@ export default function FlightMap({
       ],
     });
 
-    map.flyTo({
-      center: [routeData.airport.lon, routeData.airport.lat],
-      zoom: 4.5,
+    // Frame the origin plus every visible destination. A fixed zoom cut off the
+    // answer the page promises: ORD's long-haul routes ran off all four edges,
+    // and HNL showed open ocean with no destination visible at all. Extra top
+    // padding clears the search bar and airline pills.
+    map.fitBounds(boundsFor(routeData, selectedAirline), {
+      padding: { top: 170, bottom: 70, left: 60, right: 60 },
+      maxZoom: 6,
       duration: 1000,
     });
   }, []);
