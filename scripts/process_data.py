@@ -387,11 +387,21 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
         out_path = ROUTES_DIR / f"{origin.lower()}.json"
         out_path.write_text(json.dumps(airport_data, separators=(",", ":")))
 
-    # Write airport index (only airports that appear in route data)
+    # Write airport index (only airports that appear in route data).
+    # "passengers" is total annual departing passengers across all routes, used
+    # to rank search results so a query matching several airports surfaces the
+    # one the user almost certainly meant.
     index = []
     for iata in sorted(active_airports):
         if iata in airport_lookup:
             info = airport_lookup[iata]
+            route_file = ROUTES_DIR / f"{iata.lower()}.json"
+            passengers = 0
+            if route_file.exists():
+                data = json.loads(route_file.read_text())
+                passengers = sum(
+                    r["total_annual_passengers"] for r in data["routes"]
+                )
             index.append({
                 "iata": iata,
                 "name": info["name"],
@@ -399,6 +409,7 @@ def process_routes(t100: pd.DataFrame, airports: pd.DataFrame) -> None:
                 "region": str(info["region_label"]) if pd.notna(info.get("region_label")) else "",
                 "lat": round(info["lat"], 4),
                 "lon": round(info["lon"], 4),
+                "passengers": passengers,
             })
 
     index_path = OUTPUT_DIR / "airports.json"

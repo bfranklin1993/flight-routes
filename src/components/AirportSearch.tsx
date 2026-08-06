@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { AirportIndex } from "@/lib/types";
+import { searchAirports } from "@/lib/airport-search";
 
 interface AirportSearchProps {
   onSelect: (airport: AirportIndex) => void;
@@ -26,31 +27,7 @@ export default function AirportSearch({ onSelect, selected, dark }: AirportSearc
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const q = query.toLowerCase();
-    const filtered = airports.filter(
-      (a) =>
-        a.iata.toLowerCase().includes(q) ||
-        a.name.toLowerCase().includes(q) ||
-        a.city.toLowerCase().includes(q)
-    );
-
-    filtered.sort((a, b) => {
-      const aIata = a.iata.toLowerCase();
-      const bIata = b.iata.toLowerCase();
-      const aCity = a.city.toLowerCase();
-      const bCity = b.city.toLowerCase();
-
-      const aExact = aIata === q ? 0 : aIata.startsWith(q) ? 1 : aCity.startsWith(q) ? 2 : 3;
-      const bExact = bIata === q ? 0 : bIata.startsWith(q) ? 1 : bCity.startsWith(q) ? 2 : 3;
-      return aExact - bExact;
-    });
-
-    setResults(filtered.slice(0, 8));
+    setResults(searchAirports(airports, query));
     setHighlightIndex(-1);
   }, [query, airports]);
 
@@ -71,9 +48,12 @@ export default function AirportSearch({ onSelect, selected, dark }: AirportSearc
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlightIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && highlightIndex >= 0) {
+    } else if (e.key === "Enter" && results.length > 0) {
+      // Enter with nothing highlighted takes the top result. Previously it
+      // required pressing ArrowDown first, so typing a code and hitting Enter
+      // silently did nothing.
       e.preventDefault();
-      handleSelect(results[highlightIndex]);
+      handleSelect(results[highlightIndex >= 0 ? highlightIndex : 0]);
     } else if (e.key === "Escape") {
       setIsOpen(false);
       inputRef.current?.blur();
@@ -117,6 +97,17 @@ export default function AirportSearch({ onSelect, selected, dark }: AirportSearc
             className={`w-full rounded-lg px-5 py-3 shadow-md outline-none
                        transition-shadow focus:shadow-lg ${baseBg} ${placeholderColor}`}
           />
+          {isOpen && query.trim().length > 0 && results.length === 0 && (
+            <div
+              className={`absolute top-full mt-1 w-full rounded-lg shadow-lg px-5 py-3 z-50 text-sm
+                         ${dark
+                           ? "bg-gray-800 border border-gray-700 text-gray-400"
+                           : "bg-white border border-gray-100 text-gray-500"}`}
+            >
+              No airports found for &ldquo;{query.trim()}&rdquo;. Try an airport code
+              like ORD, or a city name.
+            </div>
+          )}
           {isOpen && results.length > 0 && (
             <ul
               ref={listRef}

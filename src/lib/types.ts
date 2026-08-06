@@ -34,4 +34,6 @@ export interface AirportIndex {
   region?: string;
   lat: number;
   lon: number;
+  /** Total annual departing passengers. Ranks search results by real size. */
+  passengers?: number;
 }
